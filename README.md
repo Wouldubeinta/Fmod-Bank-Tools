@@ -1,5 +1,7 @@
 # Fmod Bank Tools
 
+![Download Count](https://img.shields.io/github/downloads/Wouldubeinta/Fmod-Bank-Tools/total.svg)
+
 ![Title Image](https://staticdelivery.nexusmods.com/mods/1891/images/2/2-1757393867-2013881810.jpg)
 
 **How To Use:**  
