@@ -1,38 +1,54 @@
-#include "fileio.h"
 #include <qdebug.h>
+#include "fileio.h"
+#include <vector>
+#include <cmath>
 
-uint32_t chunkAmount(uint32_t unCompressedSize, uint32_t chunkSize) {
-    uint32_t chunkCount = 0;
-    double chunkSizeDec = static_cast<double>(unCompressedSize) / static_cast<double>(chunkSize);
-
-    if (unCompressedSize < chunkSize) {
-        chunkCount = 1;
-    } else if (std::round(chunkSizeDec) == chunkSizeDec) {
-        chunkCount = unCompressedSize / chunkSize;
-    } else {
-        chunkCount = (unCompressedSize / chunkSize) + 1;
+quint32 fileio::chunkAmount(quint32 unCompressedSize, quint32 chunkSize) {
+    if (chunkSize == 0) {
+        throw std::invalid_argument("chunkSize must be greater than 0");
     }
-    return chunkCount;
+
+    // Calculate the number of chunks needed
+    quint32 chunkCount = unCompressedSize / chunkSize;
+
+    // If there is any remainder, we need an additional chunk
+    if (unCompressedSize % chunkSize != 0) {
+        chunkCount++;
+    }
+
+    return (unCompressedSize == 0) ? 0 : chunkCount; // Return 0 for zero size input
 }
 
-std::vector<long> chunkSizes(int unCompressedSize, int chunkAmount, int chunkSize) {
-    std::vector<long> chunkS(chunkAmount);
-    double chunkSizeDec = static_cast<double>(unCompressedSize) / chunkSize;
+std::vector<quint64> fileio::chunkSizes(quint32 unCompressedSize, qint32 chunkAmount, quint32 chunkSize) {
+    std::vector<quint64> chunkS(chunkAmount, 0); // Initialize with zeros
 
+    // Handle case where the uncompressed size is less than the chunk size
     if (unCompressedSize < chunkSize) {
         chunkS[0] = unCompressedSize;
-    } else if (std::round(chunkSizeDec) == chunkSizeDec) {
-        for (int i = 0; i < chunkAmount; i++) {
-            chunkS[i] = chunkSize;
-        }
-    } else {
-        for (int i = 0; i < chunkAmount - 1; i++) {
-            chunkS[i] = chunkSize;
-        }
-
-        int chunk = unCompressedSize / chunkSize;
-        int lastChunkSize = chunkSize * chunk;
-        chunkS[chunkAmount - 1] = unCompressedSize - lastChunkSize;
+        return chunkS; // Early return
     }
+
+    // Calculate the number of full chunks that can be created
+    int fullChunks = unCompressedSize / chunkSize;
+    int remainder = unCompressedSize % chunkSize;
+
+    // If the number of chunks is equal to the full chunks, fill them
+    if (fullChunks >= chunkAmount) {
+        for (int i = 0; i < chunkAmount; ++i) {
+            chunkS[i] = chunkSize;
+        }
+        return chunkS; // Early return
+    }
+
+    // Fill the full chunks
+    for (int i = 0; i < fullChunks; ++i) {
+        chunkS[i] = chunkSize;
+    }
+
+    // Handle the last chunk
+    if (fullChunks < chunkAmount) {
+        chunkS[fullChunks] = remainder; // Assign remainder to the last chunk
+    }
+
     return chunkS;
 }

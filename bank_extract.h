@@ -7,7 +7,9 @@
 class bank_extract
 {
 public:
-    static int extract(QString bankPath);
+    static int extract(QString bankPath, quint32 &fsbCount);
+private:
+    static QString readString(QDataStream &in, int length);
 
 private:
     bank_extract() = delete;

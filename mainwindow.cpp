@@ -44,7 +44,22 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->rebuildTextBox->setText(rebuildDir);
     settings.endGroup();
+    settings.beginGroup("Options");
 
+    QString format = settings.value("Format").toString();
+    QString quality = settings.value("Quality").toString();
+    settings.endGroup();
+
+    if (!format.isEmpty())
+    {
+        if (format == "vorbis")
+            ui->format_comboBox->setCurrentIndex(0);
+        else
+            ui->format_comboBox->setCurrentIndex(1);
+    }
+
+    if (!quality.isEmpty())
+        ui->quality_spinBox->setValue(quality.toInt() ? quality.toInt() : 95);
 }
 
 MainWindow::~MainWindow()
@@ -174,6 +189,8 @@ void MainWindow::handleProgressUpdate(int value)
 void MainWindow::handleConsoleUpdate(QString result)
 {
     ui->consoleTextBox->append(result);
+    // Auto-scroll
+    ui->consoleTextBox->ensureCursorVisible();
 }
 
 void MainWindow::handleWorkFinished(QString result)

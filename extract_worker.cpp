@@ -6,19 +6,14 @@ ExtractWorker::ExtractWorker(QObject *parent) : QObject(parent) {}
 
 void ExtractWorker::extract_fsb()
 {
-    FMOD_SYSTEM *system = NULL;
-    FMOD_SOUND  *sound = NULL, *sound_to_play = NULL;
-    FMOD_RESULT       result;
-    FMOD_SOUND_TYPE   stype;
-    FMOD_SOUND_FORMAT sformat;
-    FMOD_CREATESOUNDEXINFO exinfo;
+    FMOD_RESULT result;
+    FMOD_SYSTEM *system = nullptr;
+    FMOD_SOUND *sound = nullptr;
 
-    unsigned int     length = 0, dataLen = 0, nameLength = 64;
-    void             *extradriverdata = 0;
-    int              schannels = 0, numsubsounds = 0, sbits = 0, priority = 0;
-    char             subsoundsName[64];
-    char*            buffer = 0;
-    float            ssamplerate = 0;
+    FMOD_CREATESOUNDEXINFO exinfo = {};
+    memset(&exinfo, 0, sizeof(FMOD_CREATESOUNDEXINFO));
+    exinfo.cbsize = sizeof(FMOD_CREATESOUNDEXINFO);
+    exinfo.length = 0;
 
     QString config = QCoreApplication::applicationDirPath() + "/config.ini";
     QSettings settings(config, QSettings::IniFormat);
@@ -29,264 +24,64 @@ void ExtractWorker::extract_fsb()
     settings.endGroup();
 
     QDir bank_directory(bankDir);
-    QStringList nameBankFilters;
-    nameBankFilters << "*.bank";
-    QStringList bankFileList = bank_directory.entryList(nameBankFilters);
+    QStringList bankFileList = bank_directory.entryList(QStringList() << "*.bank");
 
-    QStringList nameTXTFilters;
-    nameTXTFilters << "*.txt";
-    QStringList bankPasswordFileList = bank_directory.entryList(nameTXTFilters);
+    int i = 0;
 
-    for (int i = 0; i < bankFileList.count(); i++)
+    for (QString &bankFile : bankFileList)
     {
-        start:
-        QString bankPath = bankDir + bankFileList[i];
-        QStringList txtFileNames;
-
-        int errorCheck = bank_extract::extract(bankPath);
-
-        memset(&exinfo, 0, sizeof(FMOD_CREATESOUNDEXINFO));
-        exinfo.cbsize = sizeof(FMOD_CREATESOUNDEXINFO);
-        exinfo.length = 0;
-
+        QString bankPath = bankDir + bankFile;
         QFileInfo bankFileInfo(bankPath);
+        quint32 fsbCount;
+        int check = bank_extract::extract(bankPath, fsbCount);
 
         QString newLineCheck = (i == 0) ? "" : "\n";
-        emit updateConsole(newLineCheck + "Initializing Fmod Bank file - " + bankFileInfo.fileName() + "\n"); // Emit signal to update console in UI
+        emit updateConsole(newLineCheck + "Initializing Fmod Bank file - " + QFileInfo(bankPath).fileName() + "\n");
 
-        char* encryption = 0;
-
-        if (errorCheck == 0)
+        if (check != 1) // checking for encryption or error
         {
-            emit taskFinished("Error extracting bank file !!!");
-            emit progressUpdated(0);
-
-            if (i < bankFileList.count() - 1) { i++; goto start; }
-            else return;
+            if (handleExtractionError(check, bankFile, bankPath, exinfo))
+                continue; // Skip to the next bank file if error
         }
-        else if (errorCheck == 2)
-        {
-            emit taskFinished("Error, can't find any fsb audio in this bank file !!!");
-            emit progressUpdated(0);
 
-            if (i < bankFileList.count() - 1) { i++; goto start; }
-            else return;
-        }
-        else if (errorCheck == 5)
+        QString fsbName = QFileInfo(bankPath).fileName().replace(".bank", "");
+
+        for (quint32 j = 0; j < fsbCount; j++)
         {
-            if (bankPasswordFileList.size() != 0)
+            QString fsbPath = fsbDir + fsbName + "[" + QString::number(j) + "].fsb";
+            if (!QFileInfo::exists(fsbPath))
             {
-                QString password = "";
-
-                foreach (const QString _pswTxt, bankPasswordFileList)
-                {
-                    if (_pswTxt.contains(bankFileList[i].replace(".bank", "")))
-                    {
-                        QStringList tmp = readTextFileToQStringList(bankPath.replace(".bank", ".txt"));
-                        password = tmp[0];
-                    }
-                }
-
-                QByteArray encryptionkeyArray = password.toUtf8();
-                encryption = new char[encryptionkeyArray.size() + 1];
-                strcpy(encryption, encryptionkeyArray.constData());
-                exinfo.encryptionkey = encryption;
-
-                if (!password.isEmpty())
-                    emit emit updateConsole("Decrypting bank file with password: " + encryptionkeyArray + "\n");
-                else
-                {
-                    emit emit updateConsole("Can't find " + bankFileList[i].replace(".bank", ".txt") + " with password for decryption.\n");
-
-                    if (i < bankFileList.count() - 1) { i++; goto start; }
-                    else return;
-                }
+                emit taskFinished("Error, " + fsbName + "[" + QString::number(j) + "].fsb" + " file is missing !!!");
+                continue;
             }
-            else
+
+            result = FMOD_System_Create(&system);
+            if (result != FMOD_OK || (result = FMOD_System_Init(system, 1, FMOD_INIT_NORMAL, nullptr)) != FMOD_OK)
             {
-                emit emit updateConsole("Can't find " + bankFileList[i].replace(".bank", ".txt") + " with password for decryption.\n");
-
-                if (i < bankFileList.count() - 1) { i++; goto start; }
-                else return;
+                emit taskFinished(FMOD_ErrorString(result));
+                continue;
             }
-        }
 
-        QString fsbPath = fsbDir + bankFileInfo.fileName().replace(".bank", ".fsb");
-        QFileInfo fsbFileInfo(fsbPath);
-
-        if (!fsbFileInfo.exists())
-        {
-            emit taskFinished("Error, fsb file is missing !!!");
-            emit progressUpdated(0);
-
-            if (i < bankFileList.count() - 1) { i++; goto start; }
-            else return;
-        }
-
-        /*
-         Create a System object and initialize
-        */
-        result = FMOD_System_Create(&system);
-
-        if (result != FMOD_OK)
-        {
-            emit taskFinished(FMOD_ErrorString(result));
-
-            if (i < bankFileList.count() - 1) { i++; goto start; }
-            else return;
-        }
-
-        //result = system->getVersion(&version);
-        //if (result != FMOD_OK) { emit taskFinished(FMOD_ErrorString(result)); return; }
-
-        result = FMOD_System_Init(system, 1, FMOD_INIT_NORMAL, extradriverdata);
-
-        if (result != FMOD_OK)
-        {
-            emit taskFinished(FMOD_ErrorString(result));
-
-            if (i < bankFileList.count() - 1) { i++; goto start; }
-            else return;
-        }
-
-        result = FMOD_System_CreateSound(system, fsbPath.toUtf8().constData(), FMOD_OPENONLY, &exinfo, &sound);
-
-        if (result != FMOD_OK)
-        {
-            emit taskFinished(FMOD_ErrorString(result));
-
-            if (i < bankFileList.count() - 1) { i++; goto start; }
-            else return;
-        }
-
-        QDir dir(wavDir);
-        dir.mkdir(bankFileInfo.fileName().replace(".bank", ""));
-
-        result = FMOD_Sound_GetNumSubSounds(sound, &numsubsounds);
-
-        if (result != FMOD_OK)
-        {
-            emit taskFinished(FMOD_ErrorString(result));
-
-            if (i < bankFileList.count()) { i++; goto start; }
-            else return;
-        }
-
-        for (int j = 0; j < numsubsounds; j++)
-        {
-            result = FMOD_Sound_GetSubSound(sound, j, &sound_to_play);
-
+            result = FMOD_System_CreateSound(system, fsbPath.toUtf8().constData(), FMOD_OPENONLY, &exinfo, &sound);
             if (result != FMOD_OK)
             {
                 emit taskFinished(FMOD_ErrorString(result));
-
-                if (i < bankFileList.count() - 1) { i++; goto start; }
-                else return;
+                continue;
             }
 
-            result = FMOD_Sound_SeekData(sound_to_play, 0);
+            QDir dir(wavDir);
+            dir.mkdir(bankFileInfo.fileName().replace(".bank", "") + "[" + QString::number(j) + "]");
 
-            if (result != FMOD_OK)
-            {
-                emit taskFinished(FMOD_ErrorString(result));
+            bool error = processSubSounds(sound, bankFileInfo, wavDir, j);
+            if (error)
+                continue;
 
-                if (i < bankFileList.count() - 1) { i++; goto start; }
-                else return;
-            }
-
-            result = FMOD_Sound_GetDefaults(sound_to_play, &ssamplerate, &priority);
-
-            if (result != FMOD_OK)
-            {
-                emit taskFinished(FMOD_ErrorString(result));
-
-                if (i < bankFileList.count() - 1) { i++; goto start; }
-                else return;
-            }
-
-            result = FMOD_Sound_GetFormat(sound_to_play, &stype, &sformat, &schannels, &sbits);
-
-            if (result != FMOD_OK)
-            {
-                emit taskFinished(FMOD_ErrorString(result));
-
-                if (i < bankFileList.count() - 1) { i++; goto start; }
-                else return;
-            }
-
-            result = FMOD_Sound_GetLength(sound_to_play, &length, FMOD_TIMEUNIT_PCMBYTES);
-
-            if (result != FMOD_OK)
-            {
-                emit taskFinished(FMOD_ErrorString(result));
-
-                if (i < bankFileList.count() - 1) { i++; goto start; }
-                else return;
-            }
-
-            result = FMOD_Sound_GetName(sound_to_play, subsoundsName, nameLength);
-
-            if (result != FMOD_OK)
-            {
-                emit taskFinished(FMOD_ErrorString(result));
-
-                if (i < bankFileList.count() - 1) { i++; goto start; }
-                else return;
-            }
-
-            QString subsoundName = QString::fromUtf8(subsoundsName);
-
-            if (subsoundName.isEmpty())
-                subsoundName = "sound_" + QString::number(j);
-
-            QString wavName = wavDir + bankFileInfo.fileName().replace(".bank", "") + "/" + subsoundName + ".wav";
-
-            QFile file(wavName);
-            file.open(QIODevice::WriteOnly);
-            writeWAVHeader(file, ssamplerate, sbits, schannels, length);
-
-            unsigned int chunkCount = chunkAmount(length);
-            std::vector<long> _chunkSizes = chunkSizes(length, chunkCount);
-
-            for (unsigned int k = 0; k < chunkCount; k++)
-            {
-                buffer = (char*)malloc(_chunkSizes[k]);
-                result = FMOD_Sound_ReadData(sound_to_play, buffer, _chunkSizes[k], &dataLen);
-                if (result != FMOD_OK) { emit taskFinished(FMOD_ErrorString(result)); emit progressUpdated(0); return; }
-
-                if (buffer != 0)
-                {
-                    file.write(buffer, _chunkSizes[k]);
-                }
-                else
-                {
-                    emit taskFinished("Error reading wav data chunks !!!");
-                    emit progressUpdated(0);
-                    qInfo() << "Error reading wav data chunks !!!";
-                }
-
-                free(buffer);
-            }
-
-            file.flush();
-            file.close();
-
-            int subSoundsPercent = 100 * (j + 1) / numsubsounds;
-            emit progressUpdated(subSoundsPercent); // Emit signal to update progress in UI
-            QString index = QString::number(j);
-            txtFileNames << subsoundName + ".wav";
-            emit updateConsole(index + ": (" + subsoundName + ".wav) [Extracting]"); // Emit signal to update console in UI
-            //qInfo() << "Bit Depth: " + QString::number(sbits);
+            delete[] exinfo.encryptionkey;
+            FMOD_Sound_Release(sound);
+            FMOD_System_Release(system);
         }
 
-        free(extradriverdata);
-        delete[] encryption;
-        exinfo.encryptionkey = NULL;
-        FMOD_Sound_Release(sound_to_play);
-        FMOD_Sound_Release(sound);
-        FMOD_System_Release(system);
-
-        writeFilenamesToFile(txtFileNames, wavDir + bankFileInfo.fileName().replace(".bank", "") + "/" + bankFileInfo.fileName().replace(".bank", ".txt"));
+        i++;
     }
 
     if (bankFileList.count() != 0)
@@ -301,7 +96,200 @@ void ExtractWorker::extract_fsb()
         emit progressUpdated(0);
         qInfo() << "No bank files found.";
     }
+}
 
+bool ExtractWorker::handleExtractionError(int errorCheck, const QString &bankFile, QString bankPath, FMOD_CREATESOUNDEXINFO &exinfo)
+{
+    switch (errorCheck)
+    {
+        case 0:
+            emit taskFinished("Error extracting bank file: " + bankFile);
+            return true;
+            break;
+        case 2:
+            emit taskFinished("Error, can't find any fsb audio in this bank file: " + bankFile);
+            return true;
+            break;
+        case 5:
+            return handlePasswordProtectedBank(bankPath, exinfo);
+            break;
+        default:
+            emit taskFinished("Unknown error with bank file: " + bankFile);
+            return true;
+            break;
+    }
+    return false;
+}
+
+bool ExtractWorker::handlePasswordProtectedBank(QString bankPath, FMOD_CREATESOUNDEXINFO &exinfo)
+{
+    QString passwordTxT = bankPath.replace(".bank", ".txt");
+
+    // Check if the password text file exists
+    if (!QFileInfo::exists(passwordTxT)) {
+        emit updateConsole("Can't find " + passwordTxT + " with password for decryption.\n");
+        return true;
+    }
+
+    QString password = readTextFileToQStringList(passwordTxT).constFirst();
+
+    // Ensure the password list is not empty before accessing
+    if (password.isEmpty()) {
+        emit updateConsole("Password file is empty: " + passwordTxT + "\n");
+        return true;
+    }
+
+    // Convert password to QByteArray and manage memory safely
+    QByteArray encryptionKeyArray = password.toUtf8();
+    char* encryption = new char[encryptionKeyArray.size() + 1];
+    std::memcpy(encryption, encryptionKeyArray.constData(), encryptionKeyArray.size() + 1);
+    exinfo.encryptionkey = encryption;
+
+    // Emit console update based on password availability
+    emit updateConsole("Decrypting bank file with password: " + encryptionKeyArray + "\n");
+    return false;
+}
+
+bool ExtractWorker::processSubSounds(FMOD_SOUND *sound, QFileInfo bankFileInfo, const QString &wavDir, quint32 fsbIndex)
+{
+    FMOD_RESULT result;
+    int numsubsounds = 0;
+    QString wavPath = wavDir + bankFileInfo.fileName().replace(".bank", "") + "[" + QString::number(fsbIndex) + "]/";
+
+    QDir dir(wavPath);
+    if (dir.exists()) {
+        // Remove the wav directory and all its contents
+        dir.removeRecursively();
+        // Recreate the empty wav directory
+        dir.mkpath(wavPath);
+    }
+
+    result = FMOD_Sound_GetNumSubSounds(sound, &numsubsounds);
+    if (result != FMOD_OK)
+    {
+        emit taskFinished(FMOD_ErrorString(result));
+        return true;
+    }
+
+    QStringList txtFileNames;
+
+    for (int j = 0; j < numsubsounds; j++)
+    {
+        FMOD_SOUND *sound_to_play;
+        FMOD_SOUND_TYPE   stype;
+        FMOD_SOUND_FORMAT sformat;
+
+        unsigned int length = 0, dataLen = 0, nameLength = 64;
+        int schannels = 0, sbits = 0, priority = 0;
+        char             subsoundsName[64];
+        char*            buffer = 0;
+        float            ssamplerate = 0;
+
+        result = FMOD_Sound_GetSubSound(sound, j, &sound_to_play);
+        if (result != FMOD_OK)
+        {
+            emit taskFinished(FMOD_ErrorString(result));
+            return true;
+        }
+
+        result = FMOD_Sound_SeekData(sound_to_play, 0);
+        if (result != FMOD_OK)
+        {
+            emit taskFinished(FMOD_ErrorString(result));
+            return true;
+        }
+
+        result = FMOD_Sound_GetDefaults(sound_to_play, &ssamplerate, &priority);
+        if (result != FMOD_OK)
+        {
+            emit taskFinished(FMOD_ErrorString(result));
+            return true;
+        }
+
+        result = FMOD_Sound_GetFormat(sound_to_play, &stype, &sformat, &schannels, &sbits);
+        if (result != FMOD_OK)
+        {
+            emit taskFinished(FMOD_ErrorString(result));
+            return true;
+        }
+
+        result = FMOD_Sound_GetLength(sound_to_play, &length, FMOD_TIMEUNIT_PCMBYTES);
+        if (result != FMOD_OK)
+        {
+            emit taskFinished(FMOD_ErrorString(result));
+            return true;
+        }
+
+        result = FMOD_Sound_GetName(sound_to_play, subsoundsName, nameLength);
+        if (result != FMOD_OK)
+        {
+            emit taskFinished(FMOD_ErrorString(result));
+            return true;
+        }
+
+        QString subsoundName = QString::fromUtf8(subsoundsName);
+
+        // If no filename, it creates one
+        if (subsoundName.isEmpty())
+            subsoundName = "sound_" + QString::number(j);
+
+        QString wavName = wavPath + subsoundName + ".wav";
+
+        // renames wav file, if file exist
+        if (QFileInfo::exists(wavName))
+        {
+            wavName = wavName + QString::number(j);
+            subsoundName = subsoundName + QString::number(j);
+        }
+
+        QFile file(wavName);
+        file.open(QIODevice::WriteOnly);
+
+        // Check if the wav file is open for writing
+        if (!file.isOpen() || !file.isWritable()) {
+            emit taskFinished("Wav File is not open for writing.");
+            return true;
+        }
+
+        writeWAVHeader(file, ssamplerate, sbits, schannels, length);
+
+        quint32 chunkCount = fileio::chunkAmount(length);
+        std::vector<quint64> _chunkSizes = fileio::chunkSizes(length, chunkCount);
+
+        for (unsigned int k = 0; k < chunkCount; k++)
+        {
+            buffer = (char*)malloc(_chunkSizes[k]);
+            result = FMOD_Sound_ReadData(sound_to_play, buffer, _chunkSizes[k], &dataLen);
+            if (result != FMOD_OK) { emit taskFinished(FMOD_ErrorString(result)); emit progressUpdated(0); return true; }
+
+            if (buffer != 0)
+            {
+                file.write(buffer, _chunkSizes[k]);
+            }
+            else
+            {
+                emit taskFinished("Error reading wav data chunks !!!");
+                emit progressUpdated(0);
+                return true;
+            }
+
+            free(buffer);
+        }
+
+        file.flush();
+        file.close();
+
+        int subSoundsPercent = 100 * (j + 1) / numsubsounds;
+        emit progressUpdated(subSoundsPercent); // Emit signal to update progress in UI
+        QString index = QString::number(j);
+        txtFileNames << subsoundName + ".wav";
+        emit updateConsole(index + ": (" + subsoundName + ".wav) [Extracting]"); // Emit signal to update console in UI
+        //qInfo() << "Bit Depth: " + QString::number(sbits);
+
+        FMOD_Sound_Release(sound_to_play);
+    }
+    writeFilenamesToFile(txtFileNames, wavPath + bankFileInfo.fileName().replace(".bank", "") + "[" + QString::number(fsbIndex) + "].txt");
+    return false;
 }
 
 void ExtractWorker::writeFilenamesToFile(const QStringList &filenames, const QString &outputFilePath) {
@@ -313,7 +301,7 @@ void ExtractWorker::writeFilenamesToFile(const QStringList &filenames, const QSt
             out << filename << "\n"; // Write each filename followed by a newline
         }
         file.close();
-        qDebug() << "Filenames successfully written to" << outputFilePath;
+        //qDebug() << "Filenames successfully written to" << outputFilePath;
     } else {
         qDebug() << "Error opening file for writing:" << file.errorString();
     }
@@ -321,12 +309,12 @@ void ExtractWorker::writeFilenamesToFile(const QStringList &filenames, const QSt
 
 void ExtractWorker::writeWAVHeader(QFile& file, unsigned int sampleRate, short bitsPerChannel, short numChannels, unsigned int dataLen)
 {
-    const unsigned int fmtChunkLen = 18;
-    const unsigned short formatType = 1;
-    short bytesPerSample = bitsPerChannel / 8;
-    unsigned int bytesPerSecond = sampleRate * numChannels * bytesPerSample;
-    unsigned int headerLen = dataLen + 38;
+    // Constants for WAV header
+    const unsigned int fmtChunkLen = 18; // 18 for PCM
+    const unsigned short formatType = 1;  // PCM format
+    const unsigned int headerLen = dataLen + 38; // 38 = 4 (RIFF) + 4 (WAVE) + 4 (fmt) + 4 (data) + 4 (fmtChunkLen) + 2 (formatType) + 2 (numChannels) + 4 (sampleRate) + 4 (bytesPerSecond) + 4 (bytesPerSample) + 2 (bitsPerChannel)
 
+    // Write the WAV header
     file.write("RIFF", 4);
     file.write(reinterpret_cast<const char*>(&headerLen), 4);
     file.write("WAVE", 4);
@@ -335,7 +323,11 @@ void ExtractWorker::writeWAVHeader(QFile& file, unsigned int sampleRate, short b
     file.write(reinterpret_cast<const char*>(&formatType), 2);
     file.write(reinterpret_cast<const char*>(&numChannels), 2);
     file.write(reinterpret_cast<const char*>(&sampleRate), 4);
+
+    short bytesPerSample = bitsPerChannel / 8;
+    unsigned int bytesPerSecond = sampleRate * numChannels * bytesPerSample;
     file.write(reinterpret_cast<const char*>(&bytesPerSecond), 4);
+
     file.write(reinterpret_cast<const char*>(&bytesPerSample), 2);
     file.write(reinterpret_cast<const char*>(&bitsPerChannel), 4);
     file.write("data", 4);

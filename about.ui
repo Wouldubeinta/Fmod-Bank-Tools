@@ -312,6 +312,11 @@ hr { height: 1px; border-width: 0; }
 li.unchecked::marker { content: &quot;\2610&quot;; }
 li.checked::marker { content: &quot;\2612&quot;; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Segoe UI'; font-size:10pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;-2.1.1.16-&lt;/span&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* Added support for more then one fsb files in a bank.&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* If there is duplicate file names in the fsb files, it will now rename them in sequence.&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* The UI now correctly displays the Format and Quality settings defined in the settings.ini file. While these settings were applied correctly, the UI failed to update and reflect the changes when the program was reloaded.&lt;/p&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;-2.0.1.13-&lt;/span&gt;&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* Now if there is a error with one of the banks in a batch, it will skip to the next one and continue.&lt;/p&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;* Minor improvements.&lt;/p&gt;
@@ -403,7 +408,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </rect>
    </property>
    <property name="text">
-    <string>Copyright ©  Wouldy Mods 2025</string>
+    <string>Copyright ©  Wouldy Mods 2026</string>
    </property>
   </widget>
   <widget class="QLabel" name="label_4">
@@ -421,7 +426,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </font>
    </property>
    <property name="text">
-    <string>2.0.1.13</string>
+    <string>2.1.1.16</string>
    </property>
   </widget>
  </widget>

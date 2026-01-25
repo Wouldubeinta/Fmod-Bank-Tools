@@ -16,6 +16,9 @@ public:
     explicit ExtractWorker(QObject *parent = nullptr);
 
 private:
+    bool handleExtractionError(int errorCheck, const QString &bankFile, QString bankPath, FMOD_CREATESOUNDEXINFO &exinfo);
+    bool handlePasswordProtectedBank(QString bankPath, FMOD_CREATESOUNDEXINFO &exinfo);
+    bool processSubSounds(FMOD_SOUND *sound, QFileInfo bankFileInfo, const QString &wavDir, quint32 fsbIndex);
     void writeFilenamesToFile(const QStringList &filenames, const QString &outputFilePath);
     void writeWAVHeader(QFile& file, unsigned int sampleRate, short bitsPerChannel, short numChannels, unsigned int dataLen);
     QStringList readTextFileToQStringList(const QString& filePath);

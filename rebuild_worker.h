@@ -21,6 +21,7 @@ private:
     void bankProgress(const QStringList wavList);
     QStringList readTextFileToQStringList(const QString& filePath);
     void bankRebuild(const QString bankFile, const QString buildPath);
+    QByteArray readBytes(QDataStream &in, int size);
 
 public slots:
     void rebuild_bank();
