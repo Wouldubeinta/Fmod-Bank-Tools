@@ -280,7 +280,7 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
             }
             case 0x4C425453: /* "STBL" */
             {
-                quint32 currentPos = file.pos();
+                quint64 currentPos = file.pos();
 
                 if (chunk_size != 0)
                 {
@@ -288,8 +288,15 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
                     quint32 chunkTypeHash = 0;
                     in >> chunkTypeHash;
 
-                    if(chunkTypeHash != 0x48534148) /* "HASH" */
-                        chunk_size = chunk_size + 1;
+                    switch(chunkTypeHash)
+                    {
+                       case 0x20444E53: /* "SND " */
+                       case 0x48534148: /* "HASH" */
+                            break;
+                       default:
+                            chunk_size += 1;
+                            break;
+                    }
                 }
                 file.seek(currentPos + chunk_size);
                 continue;
