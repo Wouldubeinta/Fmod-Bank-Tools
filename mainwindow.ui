@@ -23,7 +23,7 @@
    <bool>false</bool>
   </property>
   <property name="windowTitle">
-   <string>Fmod Bank Tools - v2.1.1.16</string>
+   <string>Fmod Bank Tools - v2.1.2.17</string>
   </property>
   <property name="windowIcon">
    <iconset resource="rc.qrc">
