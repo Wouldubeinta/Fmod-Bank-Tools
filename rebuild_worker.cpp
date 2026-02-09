@@ -1,5 +1,7 @@
 #include "rebuild_worker.h"
 #include "fileio.h"
+#include <QtConcurrent/QtConcurrent>
+#include <QFuture>
 
 RebuildWorker::RebuildWorker(QObject *parent) : QObject(parent) {}
 
@@ -62,9 +64,9 @@ void RebuildWorker::rebuild_bank()
         emit updateConsole("Format: " + _format);
         emit updateConsole("Thread Count: 2\n");
         emit updateConsole("ReBuilding " + bankName + ".bank has started, Please wait.....\n");
-        emit progressUpdated(10);
 
         QVector<char*> wavFile(wavFiles.size());
+
         for (int j = 0; j < wavFiles.size(); ++j)
         {
             QString wavFilePath = wavDir + wavFileInfo.completeBaseName() + "/" + wavFiles[j];
@@ -81,8 +83,6 @@ void RebuildWorker::rebuild_bank()
 
         char* outputFile = new char[fsbFilePath.toUtf8().size() + 1];
         std::memcpy(outputFile, fsbFilePath.toUtf8().constData(), fsbFilePath.toUtf8().size() + 1);
-
-        emit progressUpdated(35);
 
         char* encryption = nullptr;
 
@@ -183,6 +183,7 @@ void RebuildWorker::bankProgress(const QStringList wavList)
 
         FSBank_ReleaseProgressItem(progressItem); // Release memory for the item
         progressItem = nullptr; // Reset for next fetch
+        QThread::msleep(10);
     }
 }
 

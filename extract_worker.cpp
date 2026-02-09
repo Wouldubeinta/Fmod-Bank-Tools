@@ -72,6 +72,8 @@ void ExtractWorker::extract_fsb()
             QDir dir(wavDir);
             dir.mkdir(bankFileInfo.fileName().replace(".bank", "") + "[" + QString::number(j) + "]");
 
+            emit updateConsole("\nExtracting fsb file - " + QFileInfo(fsbPath).fileName() + "\n");
+
             bool error = processSubSounds(sound, bankFileInfo, wavDir, j);
             if (error)
                 continue;
@@ -233,14 +235,17 @@ bool ExtractWorker::processSubSounds(FMOD_SOUND *sound, QFileInfo bankFileInfo, 
         if (subsoundName.isEmpty())
             subsoundName = "sound_" + QString::number(j);
 
-        QString wavName = wavPath + subsoundName + ".wav";
+        QDir dir(wavPath);
+        QString baseName = subsoundName;
+        QString fileName = baseName + ".wav";
 
-        // renames wav file, if file exist
-        if (QFileInfo::exists(wavName))
-        {
-            wavName = wavName + QString::number(j);
-            subsoundName = subsoundName + QString::number(j);
+        // Loop until a unique filename is found
+        for (int suffix = j; dir.exists(fileName); ++suffix) {
+            subsoundName = QString("%1_%2").arg(baseName).arg(suffix);
+            fileName = subsoundName + ".wav";
         }
+
+        QString wavName = dir.absoluteFilePath(fileName);
 
         QFile file(wavName);
         file.open(QIODevice::WriteOnly);
