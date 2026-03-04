@@ -37,7 +37,7 @@
   
 - Once you are in the command prompt, type "`fsbext <YourFSB>.fsb`"
   
-![typecommand](https://i.imgur.com/wCQqNwp.png)
+![typecommand](https://i.imgur.com/WROAq5Y.png)
   
 - Press enter. This should result in the following:
 
