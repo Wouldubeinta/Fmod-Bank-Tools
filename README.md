@@ -21,7 +21,7 @@
     
 
   
-**How To Find Password If The Bank Is Encrypted:**  
+## How To Find Password If The Bank Is Encrypted:
   
 
 -   First download [https://aluigi.altervista.org/papers/fsbext.zip](https://aluigi.altervista.org/papers/fsbext.zip) and extract it to a folder, we will use this later.﻿  
@@ -29,23 +29,73 @@
 
   
 
--   Now copy the encrypted bank file into the bank folder in the Fmod Bank Tools and click Extract. It will come up saying that the bank file is encrypted and it needs a password, just ignore that for now. Go to the fsb folder and copy that encrypted fsb file to the fsbext folder that you just downloaded. Know create a batch file and add the following command -
+-   Now copy the encrypted bank file into `Fmod_Bank_Tools\bank` and click Extract. It will say that the bank file is encrypted and it needs a password, ignore that for now. Go to the `Fmod_Bank_Tools\fsb` folder and copy that encrypted fsb file to the fsbext folder that you just downloaded.
 
-![Image 1](https://i.imgur.com/zqRUCk2.jpeg)
+- Open a command prompt window inside of the fsbext folder. This can be done by clicking the blank space after the file path, typing "`cmd.exe`," and pressing enter.
 
-Where it's got Weapons.fsb, rename it to your .fsb file.  
+![opencmd](https://i.imgur.com/wCQqNwp.png)
   
--   Ok load up the batch file, it should show something like this -
+- Once you are in the command prompt, type "`fsbext <YourFSB>.fsb`"
+  
+![typecommand](https://i.imgur.com/WROAq5Y.png)
+  
+- Press enter. This should result in the following:
 
-![Image 2](https://i.imgur.com/3jgpyGM.jpeg)
+![probably_encryption](https://i.imgur.com/3jgpyGM.jpeg)
 
 Type ? and hit Enter and you should get this -
 
-![Image 3](https://i.imgur.com/vl1GSZD.jpeg)
+![encryption_types](https://i.imgur.com/vl1GSZD.jpeg)
 
-I have the password highlighted under the - encryption type 2. You will see under the highlight password it's the same password, that means you have the right one.  
+* The password will likely be about 32 characters long. In this case, type 2 has the full password.
+
+* If two files use the same encryption password, bits of the password will match between FSB files, while the surrounding does not.
+
+* Much of the time, the first few characters in type 2 will be the start of your password, while the password itself appears a bit later.
+
+* If your password is NOT fully seen here, Proceed to "Extracting the remaining password with Cheat Engine."
+
+* If you have the entire password, proceed to "Adding password file."
+
+* If you get the error "The version number of this file format is not supported." 
+  * It is likely that you have part of the password, but it is incompletely or slightly incorrect.
+  * Proceed to "Extracting the remaining password with Cheat Engine"
   
+* Example of incomplete password (filtered to characters in common):
+![incomplete_passwd](https://imgur.com/vEGr5bl)
 
--   Now copy that password and add it to a txt file and name it the same name as the bank file and place it into the bank folder.  
- 
-Now your ready to extract and rebuild the encrypted bank file.
+## Extracting the remaining password with Cheat Engine
+
+**Cheat engine download:**
+* Download the correct Cheat Engine for your system from [the cheat engine website](https://www.cheatengine.org/downloads.php)
+
+* **IMPORTANT**: When installing Cheat Engine, make SURE you press decline on the other software it offers you.
+
+* Install the program you've downloaded.
+
+* Open the game that the bank files originate from.
+
+* With the game still open, open Cheat Engine and select the process.
+![open_process_menu](https://i.imgur.com/5oZWDcw.png)
+![select_process](https://i.imgur.com/njBXccn.png)
+
+* Open the `Memory View` window.
+![memview](https://i.imgur.com/7YWVo3Q.png)
+
+
+* Search for the piece of the password you have in memory.
+![findmem](https://i.imgur.com/oHjv4PQ.png)
+![findmenu](https://i.imgur.com/eflN1UR.png)
+
+* With any luck, the full password should be shown in the bottom right pane.
+![foundpass](https://i.imgur.com/qPsVF6x.png)
+
+
+## Adding password file
+
+* Type the password into a file with the same name as your .BANK file, with a .txt extension instead.
+Example:
+```
+Weapons.bank <-- Original bank file, to name your password file after
+Weapons.txt <-- Contains the password and nothing else
+```
