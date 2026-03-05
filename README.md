@@ -51,7 +51,7 @@ Type ? and hit Enter and you should get this -
 
 * If two files use the same encryption password, bits of the password will match between FSB files, while the surrounding does not.
 
-* Much of the time, the first few characters in type 2 will be the start of your password, while the password itself appears a bit later.
+* Most of the time, the first few characters in type 2 will be the start of your password, while the password itself appears a bit later.
 
 * If your password is NOT fully seen here, Proceed to "Extracting the remaining password with Cheat Engine."
 
@@ -62,7 +62,8 @@ Type ? and hit Enter and you should get this -
   * Proceed to "Extracting the remaining password with Cheat Engine"
   
 * Example of incomplete password (filtered to characters in common):
-![incomplete_passwd](https://imgur.com/vEGr5bl)
+
+![incomplete_passwd](https://i.imgur.com/vEGr5bl.png)
 
 ## Extracting the remaining password with Cheat Engine
 
