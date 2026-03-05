@@ -56,3 +56,17 @@ RESOURCES += \
     rc.qrc
 
 RC_ICONS = resource\fmod_bank_tools.ico
+
+DISTFILES += \
+    readme/encryption_types.webp \
+    readme/findmem.webp \
+    readme/findmenu.webp \
+    readme/foundpass.webp \
+    readme/incomplete_passwd.webp \
+    readme/memview.webp \
+    readme/open_process_menu.webp \
+    readme/opencmd.webp \
+    readme/probably_encryption.webp \
+    readme/select_process.webp \
+    readme/title.webp \
+    readme/typecommand.webp
