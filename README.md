@@ -2,7 +2,7 @@
 
 ![Download Count](https://img.shields.io/github/downloads/Wouldubeinta/Fmod-Bank-Tools/total.svg)
 
-![Title Image](https://staticdelivery.nexusmods.com/mods/1891/images/2/2-1757393867-2013881810.jpg)
+![Title Image](https://github.com/Wouldubeinta/Fmod-Bank-Tools/blob/master/readme/title.webp)
 
 **How To Use:**  
   
@@ -33,19 +33,19 @@
 
 - Open a command prompt window inside of the fsbext folder. This can be done by clicking the blank space after the file path, typing "`cmd.exe`," and pressing enter.
 
-![opencmd](https://i.imgur.com/wCQqNwp.png)
+![opencmd](https://github.com/Wouldubeinta/Fmod-Bank-Tools/blob/master/readme/opencmd.webp)
   
 - Once you are in the command prompt, type "`fsbext <YourFSB>.fsb`"
   
-![typecommand](https://i.imgur.com/WROAq5Y.png)
+![typecommand](https://github.com/Wouldubeinta/Fmod-Bank-Tools/blob/master/readme/typecommand.webp)
   
 - Press enter. This should result in the following:
 
-![probably_encryption](https://i.imgur.com/3jgpyGM.jpeg)
+![probably_encryption](https://github.com/Wouldubeinta/Fmod-Bank-Tools/blob/master/readme/probably_encryption.webp)
 
 Type ? and hit Enter and you should get this -
 
-![encryption_types](https://i.imgur.com/vl1GSZD.jpeg)
+![encryption_types](https://github.com/Wouldubeinta/Fmod-Bank-Tools/blob/master/readme/encryption_types.webp)
 
 * The password will likely be about 32 characters long. In this case, type 2 has the full password.
 
@@ -63,7 +63,7 @@ Type ? and hit Enter and you should get this -
   
 * Example of incomplete password (filtered to characters in common):
 
-![incomplete_passwd](https://i.imgur.com/vEGr5bl.png)
+![incomplete_passwd](https://github.com/Wouldubeinta/Fmod-Bank-Tools/blob/master/readme/incomplete_passwd.webp)
 
 ## Extracting the remaining password with Cheat Engine
 
@@ -77,19 +77,19 @@ Type ? and hit Enter and you should get this -
 * Open the game that the bank files originate from.
 
 * With the game still open, open Cheat Engine and select the process.
-![open_process_menu](https://i.imgur.com/5oZWDcw.png)
-![select_process](https://i.imgur.com/njBXccn.png)
+![open_process_menu](https://github.com/Wouldubeinta/Fmod-Bank-Tools/blob/master/readme/open_process_menu.webp)
+![select_process](https://github.com/Wouldubeinta/Fmod-Bank-Tools/blob/master/readme/select_process.webp)
 
 * Open the `Memory View` window.
-![memview](https://i.imgur.com/7YWVo3Q.png)
+![memview](https://github.com/Wouldubeinta/Fmod-Bank-Tools/blob/master/readme/memview.webp)
 
 
 * Search for the piece of the password you have in memory.
-![findmem](https://i.imgur.com/oHjv4PQ.png)
-![findmenu](https://i.imgur.com/eflN1UR.png)
+![findmem](https://github.com/Wouldubeinta/Fmod-Bank-Tools/blob/master/readme/findmem.webp)
+![findmenu](https://github.com/Wouldubeinta/Fmod-Bank-Tools/blob/master/readme/findmenu.webp)
 
 * With any luck, the full password should be shown in the bottom right pane.
-![foundpass](https://i.imgur.com/qPsVF6x.png)
+![foundpass](https://github.com/Wouldubeinta/Fmod-Bank-Tools/blob/master/readme/foundpass.webp)
 
 
 ## Adding password file
