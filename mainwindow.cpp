@@ -1,5 +1,5 @@
 #include "mainwindow.h"
-#include "./ui_mainwindow.h"
+#include "ui_mainwindow.h"
 #include "about.h"
 #include "extract_worker.h"
 #include "rebuild_worker.h"
@@ -54,12 +54,19 @@ MainWindow::MainWindow(QWidget *parent)
     {
         if (format == "vorbis")
             ui->format_comboBox->setCurrentIndex(0);
-        else
+        else if (format == "pcm")
+            ui->format_comboBox->setCurrentIndex(1);
+        else if (format == "fadpcm")
             ui->format_comboBox->setCurrentIndex(1);
     }
+    else
+        ui->format_comboBox->setCurrentIndex(0);
 
     if (!quality.isEmpty())
         ui->quality_spinBox->setValue(quality.toInt() ? quality.toInt() : 95);
+    else
+        ui->quality_spinBox->setValue(95);
+
 }
 
 MainWindow::~MainWindow()
@@ -69,7 +76,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_bankFolderButton_clicked()
 {
-    //qDebug() << "Bank Button clicked!";
     QString dir = QCoreApplication::applicationDirPath() + "/bank";
     QFileDialog::Options options = QFileDialog::ShowDirsOnly;
     QString folder = QFileDialog::getExistingDirectory(nullptr, "Select Bank Folder", dir, options);
@@ -164,13 +170,6 @@ void MainWindow::on_actionRebuild_triggered()
     connect(thread, &QThread::finished, thread, &QObject::deleteLater);
 
     thread->start(); // Start the thread
-}
-
-void MainWindow::on_actionFSB_Info_triggered()
-{
-    //Fmod_FSB_List fsbList;
-    //fsbList.setModal(true);
-    //fsbList.exec();
 }
 
 void MainWindow::on_actionInfo_triggered()

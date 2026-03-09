@@ -5,6 +5,7 @@
 #include <QThread>
 #include <QFile>
 #include <QDir>
+#include <QCoreApplication>
 #include <qsettings.h>
 #include <fmod_errors.h>
 

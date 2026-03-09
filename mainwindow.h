@@ -27,7 +27,6 @@ private slots:
     void on_RebuildFolderButton_clicked();
     void on_actionExtract_triggered();
     void on_actionRebuild_triggered();
-    void on_actionFSB_Info_triggered();
     void on_actionExit_triggered();
     void handleProgressUpdate(int value);
     void handleConsoleUpdate(QString result);

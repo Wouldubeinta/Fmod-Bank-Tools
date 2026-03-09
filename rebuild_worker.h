@@ -9,7 +9,6 @@
 #include <QDirIterator>
 #include <QApplication>
 #include <qsettings.h>
-#include <fsbank_errors.h>
 
 class RebuildWorker : public QObject
 {

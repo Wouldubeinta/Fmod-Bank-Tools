@@ -2,6 +2,7 @@
 #include "fileio.h"
 #include <QtConcurrent/QtConcurrent>
 #include <QFuture>
+#include <fsbank_errors.h>
 
 RebuildWorker::RebuildWorker(QObject *parent) : QObject(parent) {}
 
@@ -55,15 +56,30 @@ void RebuildWorker::rebuild_bank()
         QString bankName = wavFileInfo.completeBaseName().remove(removePos, 3);
         QString bankFileBasePath = bankDir + bankName;
         QString bankFilePath = bankFileBasePath + ".bank";
-        QString passwordTxT = bankFileBasePath + ".txt";
+        QString passwordTextFile = QDir(bankDir).filePath("password.txt");
+        QString passwordBankTextFile = bankFileBasePath + ".txt";
         QString fsbFilePath = fsbDir + wavFileInfo.completeBaseName() + ".fsb";
 
         QString newLineCheck = (i == 0) ? "" : "\n";
         emit updateConsole(newLineCheck + "Fmod Bank file: " + bankName + ".bank");
-        QString _format = format == "vorbis" ? "Vorbis" : "PCM";
+        QString _format = "Vorbis";
+
+        if (format == "pcm")
+            _format = "PCM";
+        else if (format == "fadpcm")
+            _format = "FADPCM";
+
         emit updateConsole("Format: " + _format);
         emit updateConsole("Thread Count: 2\n");
         emit updateConsole("ReBuilding " + bankName + ".bank has started, Please wait.....\n");
+
+        if (!QFileInfo::exists(bankFileBasePath + ".bank"))
+        {
+            emit updateConsole("Aborting bank rebuilding, can't find - " + bankFileBasePath + ".bank");
+            result = FSBank_Release();
+            if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); return; }
+            continue;
+        }
 
         QVector<char*> wavFile(wavFiles.size());
 
@@ -86,15 +102,21 @@ void RebuildWorker::rebuild_bank()
 
         char* encryption = nullptr;
 
-        // Check if the password text file exists and encrypt bank
-        if (QFileInfo::exists(passwordTxT))
+        // Check if either password text file exists and encrypts bank
+        if (QFileInfo::exists(passwordTextFile) || QFileInfo::exists(passwordBankTextFile))
         {
-            QString password = readTextFileToQStringList(passwordTxT).constFirst();
+
+            if (QFileInfo::exists(passwordBankTextFile))
+                passwordTextFile = passwordBankTextFile;
+
+            QString password = readTextFileToQStringList(passwordTextFile).constFirst();
 
             // Ensure the password list is not empty before accessing
             if (password.isEmpty()) {
-                emit updateConsole("Password file is empty: " + passwordTxT + "\n");
-                return;
+                emit updateConsole("Password file is empty: " + passwordTextFile + "\n");
+                result = FSBank_Release();
+                if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); return; }
+                continue;
             }
 
             QByteArray encryptionKeyArray = password.toUtf8();
@@ -103,13 +125,27 @@ void RebuildWorker::rebuild_bank()
             emit updateConsole("Encrypting bank file with password: " + encryptionKeyArray + "\n");
         }
 
-        result = FSBank_Build(subsounds.data(), subsounds.size(), format == "vorbis" ? FSBANK_FORMAT_VORBIS : FSBANK_FORMAT_PCM, FSBANK_BUILD_DEFAULT, quality, encryption, outputFile);
-        if (result != FSBANK_OK) { emit taskFinished(FSBank_ErrorString(result)); return; }
+        FSBANK_FORMAT fsbankFormat = FSBANK_FORMAT_VORBIS;
+
+        if (format == "pcm")
+            fsbankFormat = FSBANK_FORMAT_PCM;
+        else if (format == "fadpcm")
+            fsbankFormat = FSBANK_FORMAT_FADPCM;
+
+        result = FSBank_Build(subsounds.data(), subsounds.size(), fsbankFormat, FSBANK_BUILD_DEFAULT, quality, encryption, outputFile);
+
+        if (result != FSBANK_OK)
+        {
+            emit updateConsole(FSBank_ErrorString(result)); continue;
+            emit progressUpdated(0);
+            result = FSBank_Release();
+            if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); return; }
+        }
 
         bankProgress(wavFiles);
 
         result = FSBank_Release();
-        if (result != FSBANK_OK) { emit taskFinished(FSBank_ErrorString(result)); return; }
+        if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); return; }
 
         for (char* file : wavFile)
         {
@@ -449,6 +485,9 @@ QStringList RebuildWorker::readTextFileToQStringList(const QString& filePath) {
         QString line = in.readLine();
         stringList.append(line);
     }
+
+    if (stringList.isEmpty()) // prevent's application crash if password is empty.
+        stringList.append("");
 
     file.close();
     return stringList;
