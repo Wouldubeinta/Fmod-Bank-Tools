@@ -57,7 +57,7 @@ MainWindow::MainWindow(QWidget *parent)
         else if (format == "pcm")
             ui->format_comboBox->setCurrentIndex(1);
         else if (format == "fadpcm")
-            ui->format_comboBox->setCurrentIndex(1);
+            ui->format_comboBox->setCurrentIndex(2);
     }
     else
         ui->format_comboBox->setCurrentIndex(0);
