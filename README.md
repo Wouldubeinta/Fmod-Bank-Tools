@@ -97,7 +97,7 @@ Type ? and hit Enter and you should get this -
 * Type the password into a file with the same name as your .BANK file, with a .txt extension instead or password.txt for all encypted banks to use.
 Example:
 ```
-Weapons.bank <-- Original bank file, to name your password file after
-Weapons.txt <-- Contains the password and nothing else
-password.txt <-- Contains the password and nothing else for banks to use
+Weapons.bank <-- Original bank file, to name your password file after.
+Weapons.txt <-- Contains the password and nothing else.
+password.txt <-- Contains the password and nothing else for all banks to use.
 ```
