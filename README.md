@@ -57,11 +57,11 @@ Type ? and hit Enter and you should get this -
 
 * If you have the entire password, proceed to "Adding password file."
 
-* If you get the error "The version number of this file format is not supported." 
+* If you get the error "The version number of this file format is not supported or if the program crashes." 
   * It is likely that you have part of the password, but it is incompletely or slightly incorrect.
   * Proceed to "Extracting the remaining password with Cheat Engine"
   
-* Example of incomplete password (filtered to characters in common):
+* Example of incomplete password (filtered to characters in the column):
 
 ![incomplete_passwd](https://github.com/Wouldubeinta/Fmod-Bank-Tools/blob/master/readme/incomplete_passwd.webp)
 
@@ -94,10 +94,12 @@ Type ? and hit Enter and you should get this -
 
 ## Adding password file
 
-* Type the password into a file with the same name as your .BANK file, with a .txt extension instead or password.txt for all encypted banks to use.
+* Type the password into a file with the same name as your .BANK file, with a .txt extension instead or password.txt for all the encrypted banks to use.
+
 Example:
+
 ```
 Weapons.bank <-- Original bank file, to name your password file after.
 Weapons.txt <-- Contains the password and nothing else.
-password.txt <-- Contains the password and nothing else for all banks to use.
+password.txt <-- Contains the password and nothing else for all the encypted banks to use.
 ```
