@@ -17,7 +17,7 @@
 
   
 
--   For encrypted bank files, you will need to create a .txt file with the password in it and name it the same as the bank file and place it in the bank folder with the bank file. Example: Weapon.bank, Weapon.txt.  
+-   For encrypted bank files, you will need to create a .txt file with the password in it and name it the same as the bank file and place it in the bank folder with the bank file. Example: Weapon.bank, Weapon.txt or password.txt to be used for all banks.  
     
 
   
