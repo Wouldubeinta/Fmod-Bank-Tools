@@ -1,7 +1,5 @@
 #include "rebuild_worker.h"
 #include "fileio.h"
-#include <QtConcurrent/QtConcurrent>
-#include <QFuture>
 #include <fsbank_errors.h>
 
 RebuildWorker::RebuildWorker(QObject *parent) : QObject(parent) {}
@@ -21,6 +19,11 @@ void RebuildWorker::rebuild_bank()
     settings.beginGroup("Options");
     QString format = settings.value("Format").toString();
     unsigned int quality = settings.value("Quality").toUInt();
+    QString defaultSettings = settings.value("DefaultSettings").toString();
+    QString encodeSyncPoint = settings.value("EncodeSyncPoint").toString();
+    QString looping = settings.value("Looping").toString();
+    QString embededFileNames = settings.value("EmbededFileNames").toString();
+    QString writePeakVolume = settings.value("WritePeakVolume").toString();
     settings.endGroup();
 
     QStringList nameFilters;
@@ -77,7 +80,7 @@ void RebuildWorker::rebuild_bank()
         {
             emit updateConsole("Aborting bank rebuilding, can't find - " + bankFileBasePath + ".bank");
             result = FSBank_Release();
-            if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); return; }
+            if (result != FSBANK_OK) { emit taskFinished(FSBank_ErrorString(result)); return; }
             continue;
         }
 
@@ -115,7 +118,7 @@ void RebuildWorker::rebuild_bank()
             if (password.isEmpty()) {
                 emit updateConsole("Password file is empty: " + passwordTextFile + "\n");
                 result = FSBank_Release();
-                if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); return; }
+                if (result != FSBANK_OK) { emit taskFinished(FSBank_ErrorString(result)); return; }
                 continue;
             }
 
@@ -132,20 +135,37 @@ void RebuildWorker::rebuild_bank()
         else if (format == "fadpcm")
             fsbankFormat = FSBANK_FORMAT_FADPCM;
 
-        result = FSBank_Build(subsounds.data(), subsounds.size(), fsbankFormat, FSBANK_BUILD_DEFAULT, quality, encryption, outputFile);
+        FSBANK_BUILDFLAGS fsbankBuildFlags = FSBANK_BUILD_DEFAULT;
+
+        if (defaultSettings == "false")
+        {
+            if (encodeSyncPoint == "false")
+                fsbankBuildFlags |= FSBANK_BUILD_DISABLESYNCPOINTS;
+
+            if (looping == "false")
+                fsbankBuildFlags |= FSBANK_BUILD_DONTLOOP;
+
+            if (embededFileNames == "false")
+                fsbankBuildFlags |= FSBANK_BUILD_FSB5_DONTWRITENAMES;
+
+            if (writePeakVolume == "true")
+                fsbankBuildFlags |= FSBANK_BUILD_WRITEPEAKVOLUME;
+        }
+
+        result = FSBank_Build(subsounds.data(), subsounds.size(), fsbankFormat, fsbankBuildFlags, quality, encryption, outputFile);
 
         if (result != FSBANK_OK)
         {
             emit updateConsole(FSBank_ErrorString(result)); continue;
             emit progressUpdated(0);
             result = FSBank_Release();
-            if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); return; }
+            if (result != FSBANK_OK) { emit taskFinished(FSBank_ErrorString(result)); return; }
         }
 
         bankProgress(wavFiles);
 
         result = FSBank_Release();
-        if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); return; }
+        if (result != FSBANK_OK) { emit taskFinished(FSBank_ErrorString(result)); return; }
 
         for (char* file : wavFile)
         {

@@ -5,7 +5,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 CONFIG += c++17
 
 QMAKE_TARGET_COPYRIGHT = "\\251 Wouldy Mods 2026"
-VERSION = 2.1.3.20
+VERSION = 2.2.3.22
 
 INCLUDEPATH += $$PWD/include
 LIBS += -L$$PWD/lib/
@@ -23,7 +23,8 @@ SOURCES += \
     fileio.cpp \
     main.cpp \
     mainwindow.cpp \
-    rebuild_worker.cpp
+    rebuild_worker.cpp \
+    settings.cpp
 
 HEADERS += \
     about.h \
@@ -33,11 +34,13 @@ HEADERS += \
     fileio.h \
     mainwindow.h \
     rebuild_worker.h \
+    settings.h \
     version.h
 
 FORMS += \
     about.ui \
-    mainwindow.ui
+    mainwindow.ui \
+    settings.ui
 
 TRANSLATIONS += \
     Fmod_Bank_Tools_en_AU.ts

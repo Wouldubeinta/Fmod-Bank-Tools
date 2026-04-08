@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "settings.h"
 #include "about.h"
 #include "extract_worker.h"
 #include "rebuild_worker.h"
@@ -10,44 +11,21 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    // Add to status bar
+    // addPermanentWidget keeps it on the right side
+    ui->statusbar->addPermanentWidget(ui->progressBar);
+
     QString config = QCoreApplication::applicationDirPath() + "/config.ini";
     QSettings settings(config, QSettings::IniFormat);
-    settings.beginGroup("Directorys");
-
-    QString bankDir = settings.value("BankDir").toString();
-
-    if (bankDir.isEmpty())
-    {
-        bankDir = QCoreApplication::applicationDirPath() + "/bank";
-        settings.setValue("BankDir", bankDir);
-    }
-
-    ui->bankTextBox->setText(bankDir);
-
-    QString wavDir = settings.value("WavDir").toString();
-
-    if (wavDir.isEmpty())
-    {
-        wavDir = QCoreApplication::applicationDirPath() + "/wav";
-        settings.setValue("WavDir", wavDir);
-    }
-
-    ui->wavTextBox->setText(wavDir);
-
-    QString rebuildDir = settings.value("RebuildDir").toString();
-
-    if (rebuildDir.isEmpty())
-    {
-        rebuildDir = QCoreApplication::applicationDirPath() + "/build";
-        settings.setValue("RebuildDir", rebuildDir);
-    }
-
-    ui->rebuildTextBox->setText(rebuildDir);
-    settings.endGroup();
     settings.beginGroup("Options");
 
     QString format = settings.value("Format").toString();
     QString quality = settings.value("Quality").toString();
+    QString defaultSettings = settings.value("DefaultSettings").toString();
+    QString encodeSyncPoint = settings.value("EncodeSyncPoint").toString();
+    QString looping = settings.value("Looping").toString();
+    QString embededFileNames = settings.value("EmbededFileNames").toString();
+    QString writePeakVolume = settings.value("WritePeakVolume").toString();
     settings.endGroup();
 
     if (!format.isEmpty())
@@ -63,69 +41,64 @@ MainWindow::MainWindow(QWidget *parent)
         ui->format_comboBox->setCurrentIndex(0);
 
     if (!quality.isEmpty())
-        ui->quality_spinBox->setValue(quality.toInt() ? quality.toInt() : 95);
+        ui->quality_spinBox->setValue(quality.toInt() ? quality.toInt() : 92);
     else
-        ui->quality_spinBox->setValue(95);
+        ui->quality_spinBox->setValue(92);
 
+    if (!defaultSettings.isEmpty())
+    {
+        if (defaultSettings == "true")
+            ui->defaultSettings_checkBox->setCheckState(Qt::Checked);
+        else
+            ui->defaultSettings_checkBox->setCheckState(Qt::Unchecked);
+    }
+    else
+        ui->encodeSyncPoint_checkBox->setCheckState(Qt::Unchecked);
+
+    if (!encodeSyncPoint.isEmpty())
+    {
+        if (encodeSyncPoint == "true")
+            ui->encodeSyncPoint_checkBox->setCheckState(Qt::Checked);
+        else
+            ui->encodeSyncPoint_checkBox->setCheckState(Qt::Unchecked);
+    }
+    else
+        ui->encodeSyncPoint_checkBox->setCheckState(Qt::Unchecked);
+
+    if (!looping.isEmpty())
+    {
+        if (looping == "true")
+            ui->looping_checkBox->setCheckState(Qt::Checked);
+        else
+            ui->looping_checkBox->setCheckState(Qt::Unchecked);
+    }
+    else
+        ui->looping_checkBox->setCheckState(Qt::Unchecked);
+
+    if (!embededFileNames.isEmpty())
+    {
+        if (embededFileNames == "true")
+            ui->embededFileNames_checkBox->setCheckState(Qt::Checked);
+        else
+            ui->embededFileNames_checkBox->setCheckState(Qt::Unchecked);
+    }
+    else
+        ui->embededFileNames_checkBox->setCheckState(Qt::Unchecked);
+
+    if (!writePeakVolume.isEmpty())
+    {
+        if (writePeakVolume == "true")
+            ui->writePeakVolume_checkBox->setCheckState(Qt::Checked);
+        else
+            ui->writePeakVolume_checkBox->setCheckState(Qt::Unchecked);
+    }
+    else
+        ui->writePeakVolume_checkBox->setCheckState(Qt::Unchecked);
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
-}
-
-void MainWindow::on_bankFolderButton_clicked()
-{
-    QString dir = QCoreApplication::applicationDirPath() + "/bank";
-    QFileDialog::Options options = QFileDialog::ShowDirsOnly;
-    QString folder = QFileDialog::getExistingDirectory(nullptr, "Select Bank Folder", dir, options);
-
-    if(folder.isEmpty())
-        ui->bankTextBox->setText(dir);
-    else
-        ui->bankTextBox->setText(folder);
-
-    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
-    QSettings settings(config, QSettings::IniFormat);
-    settings.beginGroup("Directorys");
-    settings.setValue("BankDir", ui->bankTextBox->text());
-    settings.endGroup();
-}
-
-void MainWindow::on_wavFolderButton_clicked()
-{
-    QString dir = QCoreApplication::applicationDirPath() + "/wav";
-    QFileDialog::Options options = QFileDialog::ShowDirsOnly;
-    QString folder = QFileDialog::getExistingDirectory(nullptr, "Select Wav Folder", dir, options);
-
-    if(folder.isEmpty())
-        ui->wavTextBox->setText(dir);
-    else
-        ui->wavTextBox->setText(folder);
-
-    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
-    QSettings settings(config, QSettings::IniFormat);
-    settings.beginGroup("Directorys");
-    settings.setValue("WavDir", ui->wavTextBox->text());
-    settings.endGroup();
-}
-
-void MainWindow::on_RebuildFolderButton_clicked()
-{
-    QString dir = QCoreApplication::applicationDirPath() + "/build";
-    QFileDialog::Options options = QFileDialog::ShowDirsOnly;
-    QString folder = QFileDialog::getExistingDirectory(nullptr, "Select Build Folder", dir, options);
-
-    if(folder.isEmpty())
-        ui->rebuildTextBox->setText(dir);
-    else
-        ui->rebuildTextBox->setText(folder);
-
-    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
-    QSettings settings(config, QSettings::IniFormat);
-    settings.beginGroup("Directorys");
-    settings.setValue("RebuildDir", ui->rebuildTextBox->text());
-    settings.endGroup();
 }
 
 void MainWindow::on_actionExtract_triggered()
@@ -170,6 +143,58 @@ void MainWindow::on_actionRebuild_triggered()
     connect(thread, &QThread::finished, thread, &QObject::deleteLater);
 
     thread->start(); // Start the thread
+}
+
+void MainWindow::on_actionSettings_triggered()
+{
+    Settings settings;
+    settings.setModal(true);
+    settings.exec();
+}
+
+void MainWindow::on_defaultSettings_checkBox_checkStateChanged(const Qt::CheckState &arg1)
+{
+    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
+    QSettings settings(config, QSettings::IniFormat);
+    settings.beginGroup("Options");
+    settings.setValue("DefaultSettings", arg1 == Qt::Checked ? "true" : "false");
+    settings.endGroup();
+}
+
+void MainWindow::on_encodeSyncPoint_checkBox_checkStateChanged(const Qt::CheckState &arg1)
+{
+    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
+    QSettings settings(config, QSettings::IniFormat);
+    settings.beginGroup("Options");
+    settings.setValue("EncodeSyncPoint", arg1 == Qt::Checked ? "true" : "false");
+    settings.endGroup();
+}
+
+void MainWindow::on_looping_checkBox_checkStateChanged(const Qt::CheckState &arg1)
+{
+    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
+    QSettings settings(config, QSettings::IniFormat);
+    settings.beginGroup("Options");
+    settings.setValue("Looping", arg1 == Qt::Checked ? "true" : "false");
+    settings.endGroup();
+}
+
+void MainWindow::on_embededFileNames_checkBox_checkStateChanged(const Qt::CheckState &arg1)
+{
+    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
+    QSettings settings(config, QSettings::IniFormat);
+    settings.beginGroup("Options");
+    settings.setValue("EmbededFileNames", arg1 == Qt::Checked ? "true" : "false");
+    settings.endGroup();
+}
+
+void MainWindow::on_writePeakVolume_checkBox_checkStateChanged(const Qt::CheckState &arg1)
+{
+    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
+    QSettings settings(config, QSettings::IniFormat);
+    settings.beginGroup("Options");
+    settings.setValue("WritePeakVolume", arg1 == Qt::Checked ? "true" : "false");
+    settings.endGroup();
 }
 
 void MainWindow::on_actionInfo_triggered()
@@ -220,3 +245,4 @@ void MainWindow::on_actionExit_triggered()
 {
     QApplication::quit();
 }
+
