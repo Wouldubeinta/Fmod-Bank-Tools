@@ -17,10 +17,47 @@ MainWindow::MainWindow(QWidget *parent)
 
     QString config = QCoreApplication::applicationDirPath() + "/config.ini";
     QSettings settings(config, QSettings::IniFormat);
+
+    settings.beginGroup("Directorys");
+
+    QString bankDir = settings.value("BankDir").toString();
+
+    if (bankDir.isEmpty())
+    {
+        bankDir = QCoreApplication::applicationDirPath() + "/bank";
+        settings.setValue("BankDir", bankDir);
+    }
+
+    QString wavDir = settings.value("WavDir").toString();
+
+    if (wavDir.isEmpty())
+    {
+        wavDir = QCoreApplication::applicationDirPath() + "/wav";
+        settings.setValue("WavDir", wavDir);
+    }
+
+    QString rebuildDir = settings.value("RebuildDir").toString();
+
+    if (rebuildDir.isEmpty())
+    {
+        rebuildDir = QCoreApplication::applicationDirPath() + "/build";
+        settings.setValue("RebuildDir", rebuildDir);
+    }
+
+    QString cacheDir = settings.value("CacheDir").toString();
+
+    if (cacheDir.isEmpty())
+    {
+        cacheDir = QCoreApplication::applicationDirPath() + "/fsbcache";
+        settings.setValue("CacheDir", cacheDir);
+    }
+
+    settings.endGroup();
     settings.beginGroup("Options");
 
     QString format = settings.value("Format").toString();
     QString quality = settings.value("Quality").toString();
+    QString cpuThreads = settings.value("CPUThreads").toString();
     QString defaultSettings = settings.value("DefaultSettings").toString();
     QString encodeSyncPoint = settings.value("EncodeSyncPoint").toString();
     QString looping = settings.value("Looping").toString();
@@ -41,9 +78,19 @@ MainWindow::MainWindow(QWidget *parent)
         ui->format_comboBox->setCurrentIndex(0);
 
     if (!quality.isEmpty())
-        ui->quality_spinBox->setValue(quality.toInt() ? quality.toInt() : 92);
+        ui->quality_spinBox->setValue(quality.toInt() ? quality.toInt() : 75);
     else
-        ui->quality_spinBox->setValue(92);
+        ui->quality_spinBox->setValue(75);
+
+    ui->cpuThread_horizontalSlider->setMaximum(QThread::idealThreadCount() - 2);
+
+    if (!cpuThreads.isEmpty())
+    {
+        ui->cpuThread_horizontalSlider->setValue(cpuThreads.toInt() ? cpuThreads.toInt() : 2);
+        ui->cpuThreadsValue_Label->setText(cpuThreads);
+    }
+    else
+        ui->cpuThread_horizontalSlider->setValue(2);
 
     if (!defaultSettings.isEmpty())
     {
@@ -239,6 +286,16 @@ void MainWindow::on_quality_spinBox_valueChanged(int arg1)
     settings.beginGroup("Options");
     settings.setValue("Quality", arg1);
     settings.endGroup();
+}
+
+void MainWindow::on_cpuThread_horizontalSlider_valueChanged(int value)
+{
+    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
+    QSettings settings(config, QSettings::IniFormat);
+    settings.beginGroup("Options");
+    settings.setValue("CPUThreads", QString::number(value));
+    settings.endGroup();
+    ui->cpuThreadsValue_Label->setText(QString::number(value));
 }
 
 void MainWindow::on_actionExit_triggered()

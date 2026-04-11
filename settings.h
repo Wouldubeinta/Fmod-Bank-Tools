@@ -20,11 +20,8 @@ public:
 
 private slots:
     void on_bankInputDirectory_Button_clicked();
-
     void on_wavOutputDirectory_Button_clicked();
-
     void on_buildOutputDirectory_Button_clicked();
-
     void on_cacheDirectory_Button_clicked();
 
 private:

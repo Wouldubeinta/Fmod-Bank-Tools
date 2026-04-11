@@ -31,20 +31,14 @@ private slots:
     void on_actionInfo_triggered();
 
     void on_format_comboBox_currentIndexChanged(int index);
-
     void on_quality_spinBox_valueChanged(int arg1);
-
     void on_actionSettings_triggered();
-
     void on_encodeSyncPoint_checkBox_checkStateChanged(const Qt::CheckState &arg1);
-
     void on_looping_checkBox_checkStateChanged(const Qt::CheckState &arg1);
-
     void on_embededFileNames_checkBox_checkStateChanged(const Qt::CheckState &arg1);
-
     void on_writePeakVolume_checkBox_checkStateChanged(const Qt::CheckState &arg1);
-
     void on_defaultSettings_checkBox_checkStateChanged(const Qt::CheckState &arg1);
+    void on_cpuThread_horizontalSlider_valueChanged(int value);
 
 private:
     Ui::MainWindow *ui;

@@ -5,7 +5,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 CONFIG += c++17
 
 QMAKE_TARGET_COPYRIGHT = "\\251 Wouldy Mods 2026"
-VERSION = 2.2.3.22
+VERSION = 2.2.3.24
 
 INCLUDEPATH += $$PWD/include
 LIBS += -L$$PWD/lib/

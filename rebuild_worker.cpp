@@ -14,11 +14,13 @@ void RebuildWorker::rebuild_bank()
     QString bankDir = settings.value("BankDir").toString() + "/";
     QString wavDir = settings.value("WavDir").toString() + "/";
     QString rebuildDir = settings.value("RebuildDir").toString() + "/";
+    QString cacheDir = settings.value("CacheDir").toString() + "/";
     settings.endGroup();
 
     settings.beginGroup("Options");
     QString format = settings.value("Format").toString();
     unsigned int quality = settings.value("Quality").toUInt();
+    unsigned int cpuThreads = settings.value("CPUThreads").toUInt();
     QString defaultSettings = settings.value("DefaultSettings").toString();
     QString encodeSyncPoint = settings.value("EncodeSyncPoint").toString();
     QString looping = settings.value("Looping").toString();
@@ -49,7 +51,12 @@ void RebuildWorker::rebuild_bank()
 
     for (QString &wavTxt : wavTxtList)
     {
-        result = FSBank_Init(FSBANK_FSBVERSION_FSB5, FSBANK_INIT_GENERATEPROGRESSITEMS, 2, 0);
+        QByteArray cacheDirArray = cacheDir.toUtf8();
+        int cacheDirSize = cacheDirArray.size() + 1;
+        char* cachedir = new char[cacheDirSize];
+        std::memcpy(cachedir, cacheDirArray.constData(), cacheDirSize);
+
+        result = FSBank_Init(FSBANK_FSBVERSION_FSB5, FSBANK_INIT_GENERATEPROGRESSITEMS, cpuThreads, cachedir);
         if (result != FSBANK_OK) { emit taskFinished(FSBank_ErrorString(result)); return; }
 
         std::vector<FSBANK_SUBSOUND> subsounds;
@@ -90,8 +97,9 @@ void RebuildWorker::rebuild_bank()
         {
             QString wavFilePath = wavDir + wavFileInfo.completeBaseName() + "/" + wavFiles[j];
             QByteArray wavFilePathArray = wavFilePath.toUtf8();
-            wavFile[j] = new char[wavFilePathArray.size() + 1];
-            std::memcpy(wavFile[j], wavFilePathArray.constData(), wavFilePathArray.size() + 1);
+            int wavFilePathSize = wavFilePathArray.size() + 1;
+            wavFile[j] = new char[wavFilePathSize];
+            std::memcpy(wavFile[j], wavFilePathArray.constData(), wavFilePathSize);
 
             auto &subsound = subsounds.emplace_back();
             std::memset(&subsound, 0, sizeof(FSBANK_SUBSOUND));
@@ -100,8 +108,9 @@ void RebuildWorker::rebuild_bank()
             subsound.fileNames = &wavFile[j];
         }
 
-        char* outputFile = new char[fsbFilePath.toUtf8().size() + 1];
-        std::memcpy(outputFile, fsbFilePath.toUtf8().constData(), fsbFilePath.toUtf8().size() + 1);
+        int fsbFilePathSize = fsbFilePath.toUtf8().size() + 1;
+        char* outputFile = new char[fsbFilePathSize];
+        std::memcpy(outputFile, fsbFilePath.toUtf8().constData(), fsbFilePathSize);
 
         char* encryption = nullptr;
 
@@ -123,8 +132,9 @@ void RebuildWorker::rebuild_bank()
             }
 
             QByteArray encryptionKeyArray = password.toUtf8();
-            encryption = new char[encryptionKeyArray.size() + 1];
-            std::memcpy(encryption, encryptionKeyArray.constData(), encryptionKeyArray.size() + 1);
+            int encryptionKeySize = encryptionKeyArray.size() + 1;
+            encryption = new char[encryptionKeySize];
+            std::memcpy(encryption, encryptionKeyArray.constData(), encryptionKeySize);
             emit updateConsole("Encrypting bank file with password: " + encryptionKeyArray + "\n");
         }
 
@@ -171,6 +181,7 @@ void RebuildWorker::rebuild_bank()
         {
             delete[] file;
         }
+        delete[] cachedir;
         delete[] outputFile;
         delete[] encryption;
         bankRebuild(bankFilePath, rebuildDir);

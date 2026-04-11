@@ -12,43 +12,15 @@ Settings::Settings(QWidget *parent)
     settings.beginGroup("Directorys");
 
     QString bankDir = settings.value("BankDir").toString();
-
-    if (bankDir.isEmpty())
-    {
-        bankDir = QCoreApplication::applicationDirPath() + "/bank";
-        settings.setValue("BankDir", bankDir);
-    }
-
     ui->bankInputDirectory_lineEdit->setText(bankDir);
 
     QString wavDir = settings.value("WavDir").toString();
-
-    if (wavDir.isEmpty())
-    {
-        wavDir = QCoreApplication::applicationDirPath() + "/wav";
-        settings.setValue("WavDir", wavDir);
-    }
-
     ui->wavOutputDirectory_lineEdit->setText(wavDir);
 
     QString rebuildDir = settings.value("RebuildDir").toString();
-
-    if (rebuildDir.isEmpty())
-    {
-        rebuildDir = QCoreApplication::applicationDirPath() + "/build";
-        settings.setValue("RebuildDir", rebuildDir);
-    }
-
     ui->buildOutputDirectory_lineEdit->setText(rebuildDir);
 
     QString cacheDir = settings.value("CacheDir").toString();
-
-    if (cacheDir.isEmpty())
-    {
-        cacheDir = QCoreApplication::applicationDirPath() + "/fsbcache";
-        settings.setValue("CacheDir", cacheDir);
-    }
-
     ui->cacheDirectory_lineEdit->setText(cacheDir);
     settings.endGroup();
 }
