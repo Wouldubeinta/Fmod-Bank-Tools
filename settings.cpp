@@ -1,5 +1,6 @@
 #include "settings.h"
 #include "ui_settings.h"
+#include "fileio.h"
 
 Settings::Settings(QWidget *parent)
     : QDialog(parent)
@@ -11,16 +12,16 @@ Settings::Settings(QWidget *parent)
     QSettings settings(config, QSettings::IniFormat);
     settings.beginGroup("Directorys");
 
-    QString bankDir = settings.value("BankDir").toString();
+    QString bankDir = fileio::resolveFolderPath(settings.value("BankDir").toString());
     ui->bankInputDirectory_lineEdit->setText(bankDir);
 
-    QString wavDir = settings.value("WavDir").toString();
+    QString wavDir = fileio::resolveFolderPath(settings.value("WavDir").toString());
     ui->wavOutputDirectory_lineEdit->setText(wavDir);
 
-    QString rebuildDir = settings.value("RebuildDir").toString();
+    QString rebuildDir = fileio::resolveFolderPath(settings.value("RebuildDir").toString());
     ui->buildOutputDirectory_lineEdit->setText(rebuildDir);
 
-    QString cacheDir = settings.value("CacheDir").toString();
+    QString cacheDir = fileio::resolveFolderPath(settings.value("CacheDir").toString());
     ui->cacheDirectory_lineEdit->setText(cacheDir);
     settings.endGroup();
 }

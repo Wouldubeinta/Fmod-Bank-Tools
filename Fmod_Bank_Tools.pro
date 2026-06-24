@@ -5,7 +5,10 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 CONFIG += c++17
 
 QMAKE_TARGET_COPYRIGHT = "\\251 Wouldy Mods 2026"
-VERSION = 2.2.3.24
+VERSION = 2.2.4.29
+
+# Pass the version as a string macro to C++
+DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 INCLUDEPATH += $$PWD/include
 LIBS += -L$$PWD/lib/
@@ -34,8 +37,7 @@ HEADERS += \
     fileio.h \
     mainwindow.h \
     rebuild_worker.h \
-    settings.h \
-    version.h
+    settings.h
 
 FORMS += \
     about.ui \

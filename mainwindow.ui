@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>802</width>
+    <width>847</width>
     <height>647</height>
    </rect>
   </property>
@@ -20,7 +20,7 @@
    <bool>false</bool>
   </property>
   <property name="windowTitle">
-   <string>Fmod Bank Tools - v2.2.3.24</string>
+   <string>Fmod Bank Tools</string>
   </property>
   <property name="windowIcon">
    <iconset resource="rc.qrc">
@@ -213,7 +213,7 @@
          <rect>
           <x>10</x>
           <y>120</y>
-          <width>64</width>
+          <width>81</width>
           <height>25</height>
          </rect>
         </property>
@@ -235,7 +235,7 @@
          <rect>
           <x>10</x>
           <y>260</y>
-          <width>121</width>
+          <width>131</width>
           <height>21</height>
          </rect>
         </property>
@@ -251,7 +251,7 @@
          <rect>
           <x>10</x>
           <y>290</y>
-          <width>101</width>
+          <width>121</width>
           <height>21</height>
          </rect>
         </property>
@@ -267,7 +267,7 @@
          <rect>
           <x>10</x>
           <y>320</y>
-          <width>131</width>
+          <width>141</width>
           <height>21</height>
          </rect>
         </property>
@@ -283,7 +283,7 @@
          <rect>
           <x>10</x>
           <y>350</y>
-          <width>121</width>
+          <width>141</width>
           <height>21</height>
          </rect>
         </property>
@@ -405,7 +405,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>802</width>
+     <width>847</width>
      <height>21</height>
     </rect>
    </property>

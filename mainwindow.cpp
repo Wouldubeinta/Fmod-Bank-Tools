@@ -4,12 +4,15 @@
 #include "about.h"
 #include "extract_worker.h"
 #include "rebuild_worker.h"
+#include "fileio.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    QString version = APP_VERSION;
+    this->setWindowTitle("Fmod Bank Tools - v" + version);
 
     // Add to status bar
     // addPermanentWidget keeps it on the right side
@@ -20,33 +23,33 @@ MainWindow::MainWindow(QWidget *parent)
 
     settings.beginGroup("Directorys");
 
-    QString bankDir = settings.value("BankDir").toString();
+    QString bankDir = fileio::resolveFolderPath(settings.value("BankDir").toString());
 
-    if (bankDir.isEmpty())
+    if (bankDir.isEmpty() || !QFileInfo::exists(bankDir))
     {
         bankDir = QCoreApplication::applicationDirPath() + "/bank";
         settings.setValue("BankDir", bankDir);
     }
 
-    QString wavDir = settings.value("WavDir").toString();
+    QString wavDir = fileio::resolveFolderPath(settings.value("WavDir").toString());
 
-    if (wavDir.isEmpty())
+    if (wavDir.isEmpty() || !QFileInfo::exists(wavDir))
     {
         wavDir = QCoreApplication::applicationDirPath() + "/wav";
         settings.setValue("WavDir", wavDir);
     }
 
-    QString rebuildDir = settings.value("RebuildDir").toString();
+    QString rebuildDir = fileio::resolveFolderPath(settings.value("RebuildDir").toString());
 
-    if (rebuildDir.isEmpty())
+    if (rebuildDir.isEmpty() || !QFileInfo::exists(rebuildDir))
     {
         rebuildDir = QCoreApplication::applicationDirPath() + "/build";
         settings.setValue("RebuildDir", rebuildDir);
     }
 
-    QString cacheDir = settings.value("CacheDir").toString();
+    QString cacheDir = fileio::resolveFolderPath(settings.value("CacheDir").toString());
 
-    if (cacheDir.isEmpty())
+    if (cacheDir.isEmpty() || !QFileInfo::exists(cacheDir))
     {
         cacheDir = QCoreApplication::applicationDirPath() + "/fsbcache";
         settings.setValue("CacheDir", cacheDir);

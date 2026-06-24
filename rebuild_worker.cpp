@@ -11,10 +11,10 @@ void RebuildWorker::rebuild_bank()
 
     settings.beginGroup("Directorys");
     QString fsbDir = QCoreApplication::applicationDirPath() + "/fsb/";
-    QString bankDir = settings.value("BankDir").toString() + "/";
-    QString wavDir = settings.value("WavDir").toString() + "/";
-    QString rebuildDir = settings.value("RebuildDir").toString() + "/";
-    QString cacheDir = settings.value("CacheDir").toString() + "/";
+    QString bankDir = fileio::resolveFolderPath(settings.value("BankDir").toString()) + "/";
+    QString wavDir = fileio::resolveFolderPath(settings.value("WavDir").toString()) + "/";
+    QString rebuildDir = fileio::resolveFolderPath(settings.value("RebuildDir").toString()) + "/";
+    QString cacheDir = fileio::resolveFolderPath(settings.value("CacheDir").toString()) + "/";
     settings.endGroup();
 
     settings.beginGroup("Options");
@@ -57,7 +57,7 @@ void RebuildWorker::rebuild_bank()
         std::memcpy(cachedir, cacheDirArray.constData(), cacheDirSize);
 
         result = FSBank_Init(FSBANK_FSBVERSION_FSB5, FSBANK_INIT_GENERATEPROGRESSITEMS, cpuThreads, cachedir);
-        if (result != FSBANK_OK) { emit taskFinished(FSBank_ErrorString(result)); return; }
+        if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); continue;}
 
         std::vector<FSBANK_SUBSOUND> subsounds;
         QStringList wavFiles = readTextFileToQStringList(wavTxt);
@@ -80,14 +80,14 @@ void RebuildWorker::rebuild_bank()
             _format = "FADPCM";
 
         emit updateConsole("Format: " + _format);
-        emit updateConsole("Thread Count: 2\n");
+        emit updateConsole("Thread Count: " + QString::number(cpuThreads) + "\n");
         emit updateConsole("ReBuilding " + bankName + ".bank has started, Please wait.....\n");
 
         if (!QFileInfo::exists(bankFileBasePath + ".bank"))
         {
             emit updateConsole("Aborting bank rebuilding, can't find - " + bankFileBasePath + ".bank");
             result = FSBank_Release();
-            if (result != FSBANK_OK) { emit taskFinished(FSBank_ErrorString(result)); return; }
+            if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); continue;}
             continue;
         }
 
@@ -127,7 +127,7 @@ void RebuildWorker::rebuild_bank()
             if (password.isEmpty()) {
                 emit updateConsole("Password file is empty: " + passwordTextFile + "\n");
                 result = FSBank_Release();
-                if (result != FSBANK_OK) { emit taskFinished(FSBank_ErrorString(result)); return; }
+                if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); continue;}
                 continue;
             }
 
@@ -169,13 +169,13 @@ void RebuildWorker::rebuild_bank()
             emit updateConsole(FSBank_ErrorString(result)); continue;
             emit progressUpdated(0);
             result = FSBank_Release();
-            if (result != FSBANK_OK) { emit taskFinished(FSBank_ErrorString(result)); return; }
+            if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); continue;}
         }
 
         bankProgress(wavFiles);
 
         result = FSBank_Release();
-        if (result != FSBANK_OK) { emit taskFinished(FSBank_ErrorString(result)); return; }
+        if (result != FSBANK_OK) { emit taskFinished(FSBank_ErrorString(result)); continue; }
 
         for (char* file : wavFile)
         {

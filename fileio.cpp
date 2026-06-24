@@ -52,3 +52,17 @@ std::vector<quint64> fileio::chunkSizes(quint32 unCompressedSize, qint32 chunkAm
 
     return chunkS;
 }
+
+QString fileio::resolveFolderPath(const QString& inputPath) {
+    QString resolvedPath;
+
+    // Check if it is already a full absolute path
+    if (QFileInfo(inputPath).isAbsolute()) {
+        resolvedPath = QDir::cleanPath(inputPath);
+    } else {
+        // Resolves - example: ".\\bank" to a full absolute folder path
+        resolvedPath = QDir::current().absoluteFilePath(inputPath);
+    }
+
+    return QDir::cleanPath(resolvedPath);
+}
