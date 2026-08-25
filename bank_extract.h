@@ -3,11 +3,12 @@
 
 #include <QFile>
 #include <QApplication>
+#include "global_errors.h"
 
 class bank_extract
 {
 public:
-    static int extract(QString bankPath, quint32 &fsbCount);
+    static ErrorChecks extract(QString bankPath, quint32 &fsbCount);
 private:
     static QString readString(QDataStream &in, int length);
 

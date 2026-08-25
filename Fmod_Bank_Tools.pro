@@ -5,7 +5,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 CONFIG += c++17
 
 QMAKE_TARGET_COPYRIGHT = "\\251 Wouldy Mods 2026"
-VERSION = 2.2.4.29
+VERSION = 2.2.4.32
 
 # Pass the version as a string macro to C++
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
@@ -24,6 +24,7 @@ SOURCES += \
     bank_extract.cpp \
     extract_worker.cpp \
     fileio.cpp \
+    global_errors.cpp \
     main.cpp \
     mainwindow.cpp \
     rebuild_worker.cpp \
@@ -32,9 +33,9 @@ SOURCES += \
 HEADERS += \
     about.h \
     bank_extract.h \
-    bank_header.h \
     extract_worker.h \
     fileio.h \
+    global_errors.h \
     mainwindow.h \
     rebuild_worker.h \
     settings.h
@@ -44,10 +45,7 @@ FORMS += \
     mainwindow.ui \
     settings.ui
 
-TRANSLATIONS += \
-    Fmod_Bank_Tools_en_AU.ts
 CONFIG += lrelease
-CONFIG += embed_translations
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

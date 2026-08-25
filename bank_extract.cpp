@@ -5,13 +5,13 @@
 #include <QVector>
 #include <QtGlobal>
 
-int bank_extract::extract(QString bankPath, quint32 &fsbCount)
+ErrorChecks bank_extract::extract(QString bankPath, quint32 &fsbCount)
 {
-    int check = 0;
+    ErrorChecks results = ErrorChecks::Success;
     QFile file(bankPath);
 
     if (!file.open(QIODevice::ReadOnly)) {
-        return check; // File open error
+        return ErrorChecks::BankFileNotFound; // File open error
     }
 
     QDataStream in(&file);
@@ -20,33 +20,37 @@ int bank_extract::extract(QString bankPath, quint32 &fsbCount)
 
     QString magic = readString(in, 4);
     if (magic != "RIFF") {
-        return check; // Invalid magic
+        return ErrorChecks::InvalidRIFF; // Invalid RIFF magic
     }
 
     file.seek(0x08);
     QString fevString = readString(in, 4);
     if (fevString != "FEV ") {
-        return check; // Invalid FEV
+        return ErrorChecks::InvalidFEV; // Invalid FEV magic
     }
 
     file.seek(0x14);
     quint32 version;
     in >> version;
     if (version == 0) {
-        return check; // Invalid version
+        return ErrorChecks::InvalidVersion; // Invalid Bank version
     }
 
     file.seek(0x1c);
     QString listString = readString(in, 4);
     if (listString != "LIST") {
-        return check; // Invalid LIST
+        return ErrorChecks::InvalidLIST; // Invalid LIST
     }
 
     file.seek(file.pos() + 0x04);
     QString projString = readString(in, 4);
+    if (projString != "PROJ") {
+        return ErrorChecks::InvalidPROJ; // Invalid PROJ
+    }
+
     QString BnkiString = readString(in, 4);
-    if (projString != "PROJ" || BnkiString != "BNKI") {
-        return check; // Invalid project or BNKI
+    if (BnkiString != "BNKI") {
+        return ErrorChecks::InvalidBNKI; // Invalid BNKI
     }
 
     QVector<quint32> sndh_fsbOffset;
@@ -70,12 +74,12 @@ int bank_extract::extract(QString bankPath, quint32 &fsbCount)
         in >> chunk_size;
 
         if (chunk_type == 0xFFFFFFFF || chunk_size == 0xFFFFFFFF) {
-            return check; // Invalid chunk
+            return ErrorChecks::InvalidChunk; // Invalid chunk
         }
 
         if (chunk_type == 0x48444E53) { // "SNDH"
             if (chunk_size == 0)
-                return 2; // Doesn't have fsb's in bank
+                return ErrorChecks::NoFSBFoundInBank; // Doesn't have fsb's in bank
             _fsbCount = (chunk_size - 4) / 8;
             fsbCount = _fsbCount;
             sndh_fsbOffset.resize(_fsbCount);
@@ -93,7 +97,7 @@ int bank_extract::extract(QString bankPath, quint32 &fsbCount)
     }
 
     if (sndh_fsbOffset[0] == 0 || sndh_fsbSize[0] == 0) {
-        return 2; // FSB offset or size is zero
+        return ErrorChecks::ExtSndhOffsetSizeError; // FSB offset or size is zero
     }
 
     QString bankName = file.fileName();
@@ -106,7 +110,8 @@ int bank_extract::extract(QString bankPath, quint32 &fsbCount)
         {
             file.seek(sndh_fsbOffset[j]);
             QString fsbMagic = readString(in, 4);
-            check = (fsbMagic != "FSB5") ? 5 : 1; // check fsb is encrypted
+            if (fsbMagic != "FSB5")
+                results = ErrorChecks::IsEncrypted;  // fsb is encrypted
         }
 
         file.seek(sndh_fsbOffset[j]);
@@ -117,7 +122,7 @@ int bank_extract::extract(QString bankPath, quint32 &fsbCount)
         QFile fsboutFile(QCoreApplication::applicationDirPath() + "/fsb/" + fsbNameTmp + "[" + QString::number(j) + "].fsb");
 
         if (!fsboutFile.open(QIODevice::WriteOnly)) {
-            return 0; // File write error
+            return ErrorChecks::WriteFailure; // File write error
         }
 
         for (unsigned int k = 0; k < chunkCount; k++)
@@ -132,7 +137,7 @@ int bank_extract::extract(QString bankPath, quint32 &fsbCount)
     }
 
     file.close();
-    return check;
+    return results;
 }
 
 QString bank_extract::readString(QDataStream &in, int length) {

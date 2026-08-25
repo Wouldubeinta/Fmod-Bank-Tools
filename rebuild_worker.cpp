@@ -1,11 +1,15 @@
 #include "rebuild_worker.h"
 #include "fileio.h"
 #include <fsbank_errors.h>
+#include "global_errors.h"
 
 RebuildWorker::RebuildWorker(QObject *parent) : QObject(parent) {}
 
 void RebuildWorker::rebuild_bank()
 {
+    // ==========================================
+    // INITIALISATION & CONFIGURATION LOADING
+    // ==========================================
     QString config = QCoreApplication::applicationDirPath() + "/config.ini";
     QSettings settings(config, QSettings::IniFormat);
 
@@ -28,6 +32,9 @@ void RebuildWorker::rebuild_bank()
     QString writePeakVolume = settings.value("WritePeakVolume").toString();
     settings.endGroup();
 
+    // ==========================================
+    // DISCOVERING TARGET TEXT FILES (.TXT)
+    // ==========================================
     QStringList nameFilters;
     nameFilters << "*.txt";
 
@@ -40,28 +47,33 @@ void RebuildWorker::rebuild_bank()
 
     if (wavTxtList.isEmpty())
     {
-        emit taskFinished("\nError: could not find txt wav lists !!!");
+        emit taskFinished(GlobalErrors::errorToString(ErrorChecks::TextWavFileOpenFailure));
         emit progressUpdated(0);
         return;
     }
 
     FSBANK_RESULT result;
-
     int i = 0;
 
+    // ==========================================
+    // MAIN REBUILD LOOP
+    // ==========================================
     for (QString &wavTxt : wavTxtList)
     {
+        // Safe, automatic memory management for the cache directory string
         QByteArray cacheDirArray = cacheDir.toUtf8();
-        int cacheDirSize = cacheDirArray.size() + 1;
-        char* cachedir = new char[cacheDirSize];
-        std::memcpy(cachedir, cacheDirArray.constData(), cacheDirSize);
+        char* cachedir = cacheDirArray.data();
 
         result = FSBank_Init(FSBANK_FSBVERSION_FSB5, FSBANK_INIT_GENERATEPROGRESSITEMS, cpuThreads, cachedir);
-        if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); continue;}
+        if (result != FSBANK_OK) {
+            emit updateConsole(FSBank_ErrorString(result));
+            continue;
+        }
 
         std::vector<FSBANK_SUBSOUND> subsounds;
         QStringList wavFiles = readTextFileToQStringList(wavTxt);
         QFileInfo wavFileInfo(wavTxt);
+
         quint32 removePos = wavFileInfo.completeBaseName().length() - 3;
         QString bankName = wavFileInfo.completeBaseName().remove(removePos, 3);
         QString bankFileBasePath = bankDir + bankName;
@@ -71,7 +83,7 @@ void RebuildWorker::rebuild_bank()
         QString fsbFilePath = fsbDir + wavFileInfo.completeBaseName() + ".fsb";
 
         QString newLineCheck = (i == 0) ? "" : "\n";
-        emit updateConsole(newLineCheck + "Fmod Bank file: " + bankName + ".bank");
+        emit updateConsole(QString("%1Fmod Bank file: %2.bank").arg(newLineCheck, bankName));
         QString _format = "Vorbis";
 
         if (format == "pcm")
@@ -79,65 +91,78 @@ void RebuildWorker::rebuild_bank()
         else if (format == "fadpcm")
             _format = "FADPCM";
 
-        emit updateConsole("Format: " + _format);
-        emit updateConsole("Thread Count: " + QString::number(cpuThreads) + "\n");
-        emit updateConsole("ReBuilding " + bankName + ".bank has started, Please wait.....\n");
+        emit updateConsole(QString("Format: %1").arg(_format));
+        emit updateConsole(QString("Thread Count: %1\n").arg(cpuThreads));
+        emit updateConsole(QString("ReBuilding %1.bank has started, Please wait.....\n").arg(bankName));
 
         if (!QFileInfo::exists(bankFileBasePath + ".bank"))
         {
-            emit updateConsole("Aborting bank rebuilding, can't find - " + bankFileBasePath + ".bank");
+            emit updateConsole(QString("Aborting bank rebuilding, can't find - %1.bank").arg(bankFileBasePath));
             result = FSBank_Release();
-            if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); continue;}
+            if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); }
             continue;
         }
 
-        QVector<char*> wavFile(wavFiles.size());
+        // ==========================================
+        // PREPARING SUBSOUND STRUCTURES (FIXED COMPILER ERROR)
+        // ==========================================
+        // Keeps the raw underlying QByteArrays alive in memory during the execution phase
+        QVector<QByteArray> wavFilePathsBytes;
+        wavFilePathsBytes.reserve(wavFiles.size());
+
+        // Stores standard modifiable lvalue pointer types to satisfy C-linkage parameter rules
+        std::vector<char*> wavFilePointers(wavFiles.size());
 
         for (int j = 0; j < wavFiles.size(); ++j)
         {
-            QString wavFilePath = wavDir + wavFileInfo.completeBaseName() + "/" + wavFiles[j];
-            QByteArray wavFilePathArray = wavFilePath.toUtf8();
-            int wavFilePathSize = wavFilePathArray.size() + 1;
-            wavFile[j] = new char[wavFilePathSize];
-            std::memcpy(wavFile[j], wavFilePathArray.constData(), wavFilePathSize);
+            QString wavFilePath = QString("%1%2/%3")
+            .arg(wavDir,
+                 wavFileInfo.completeBaseName(),
+                 wavFiles[j]);
+
+            wavFilePathsBytes.append(wavFilePath.toUtf8());
+
+            // Extract the persistent data array address safely without triggering rvalue compilation errors
+            wavFilePointers[j] = const_cast<char*>(wavFilePathsBytes.last().constData());
 
             auto &subsound = subsounds.emplace_back();
             std::memset(&subsound, 0, sizeof(FSBANK_SUBSOUND));
 
             subsound.numFiles = 1;
-            subsound.fileNames = &wavFile[j];
+            subsound.fileNames = &wavFilePointers[j];
         }
 
-        int fsbFilePathSize = fsbFilePath.toUtf8().size() + 1;
-        char* outputFile = new char[fsbFilePathSize];
-        std::memcpy(outputFile, fsbFilePath.toUtf8().constData(), fsbFilePathSize);
+        QByteArray fsbFilePathArray = fsbFilePath.toUtf8();
+        char* outputFile = fsbFilePathArray.data();
 
+        // ==========================================
+        // ENCRYPTION & PASSWORD HANDLING
+        // ==========================================
+        QByteArray encryptionKeyArray;
         char* encryption = nullptr;
 
-        // Check if either password text file exists and encrypts bank
         if (QFileInfo::exists(passwordTextFile) || QFileInfo::exists(passwordBankTextFile))
         {
-
             if (QFileInfo::exists(passwordBankTextFile))
                 passwordTextFile = passwordBankTextFile;
 
             QString password = readTextFileToQStringList(passwordTextFile).constFirst();
 
-            // Ensure the password list is not empty before accessing
             if (password.isEmpty()) {
-                emit updateConsole("Password file is empty: " + passwordTextFile + "\n");
+                emit updateConsole(QString("Password file is empty: %1\n").arg(passwordTextFile));
                 result = FSBank_Release();
-                if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); continue;}
+                if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); }
                 continue;
             }
 
-            QByteArray encryptionKeyArray = password.toUtf8();
-            int encryptionKeySize = encryptionKeyArray.size() + 1;
-            encryption = new char[encryptionKeySize];
-            std::memcpy(encryption, encryptionKeyArray.constData(), encryptionKeySize);
-            emit updateConsole("Encrypting bank file with password: " + encryptionKeyArray + "\n");
+            encryptionKeyArray = password.toUtf8();
+            encryption = encryptionKeyArray.data();
+            emit updateConsole(QString("Encrypting bank file with password: %1\n").arg(encryptionKeyArray));
         }
 
+        // ==========================================
+        // BUILD FLAG SETTINGS & BUG FIXES
+        // ==========================================
         FSBANK_FORMAT fsbankFormat = FSBANK_FORMAT_VORBIS;
 
         if (format == "pcm")
@@ -166,148 +191,189 @@ void RebuildWorker::rebuild_bank()
 
         if (result != FSBANK_OK)
         {
-            emit updateConsole(FSBank_ErrorString(result)); continue;
+            emit updateConsole(FSBank_ErrorString(result));
             emit progressUpdated(0);
+
             result = FSBank_Release();
-            if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); continue;}
+            if (result != FSBANK_OK) { emit updateConsole(FSBank_ErrorString(result)); }
+            continue;
         }
 
+        // Run the progress tracker loop
         bankProgress(wavFiles);
 
         result = FSBank_Release();
-        if (result != FSBANK_OK) { emit taskFinished(FSBank_ErrorString(result)); continue; }
-
-        for (char* file : wavFile)
-        {
-            delete[] file;
+        if (result != FSBANK_OK) {
+            emit taskFinished(FSBank_ErrorString(result));
+            continue;
         }
-        delete[] cachedir;
-        delete[] outputFile;
-        delete[] encryption;
+
+        // ==========================================
+        // REBUILD AND AUTOMATIC CLEANUP
+        // ==========================================
         bankRebuild(bankFilePath, rebuildDir);
         i++;
     }
 
+    emit taskFinished(GlobalErrors::errorToString(ErrorChecks::RebSuccess));
     emit progressUpdated(0);
-    emit taskFinished("\nRebuilding Bank files has finished");
 }
 
-void RebuildWorker::bankProgress(const QStringList wavList)
-{
-    // Build process started successfully, now fetch progress items
+void RebuildWorker::bankProgress(const QStringList wavList) {
     const FSBANK_PROGRESSITEM* progressItem = nullptr;
 
     int index = 0;
 
-    while (FSBank_FetchNextProgressItem(&progressItem) == FSBANK_OK && progressItem != nullptr)
-    {
-        // Process the progress item
-        switch (progressItem->state)
-        {
+    while (FSBank_FetchNextProgressItem(&progressItem) == FSBANK_OK && progressItem != nullptr) {
+        // Safely extract the sound name if the index is valid
+        QString soundName = "Global";
+        if (progressItem->subSoundIndex >= 0 && progressItem->subSoundIndex < wavList.size()) {
+            soundName = wavList[progressItem->subSoundIndex];
+        }
+
+        switch (progressItem->state) {
         case FSBANK_STATE_PREPROCESSING:
-            // Item is waiting to be processed
+            emit updateConsole(QString("[%1] Preprocessing...").arg(soundName));
             break;
         case FSBANK_STATE_ANALYSING:
-            // Item is analysing
+            emit updateConsole(QString("[%1] Analysing...").arg(soundName));
             break;
         case FSBANK_STATE_DECODING:
-            // Item is decoding
+            emit updateConsole(QString("[%1] Decoding...").arg(soundName));
             break;
         case FSBANK_STATE_ENCODING:
-        {
-            // Item is currently being built
+            emit updateConsole(QString("[%1] Encoding...").arg(soundName));
             break;
-        }
         case FSBANK_STATE_WRITING:
-        {
-            // Item is writing
+            emit updateConsole(QString("[%1] Writing to disk...").arg(soundName));
             break;
-        }
-        case FSBANK_STATE_FINISHED:
-        {
-            // Item build complete
-            if (progressItem->subSoundIndex != -1)
-            {
-                emit updateConsole(QString::number(index) + ": (" + wavList[index] + ") [Proccessing]");
-                int subSoundsPercent = 100 * (index + 1) / wavList.size();
-                emit progressUpdated(subSoundsPercent); // Emit signal to update progress in UI
+
+        case FSBANK_STATE_FINISHED: {
+            emit updateConsole(QString("[%1] Finished processing successfully.").arg(soundName));
+
+            // Safely calculate total completion percentage against the wav list
+            if (wavList.size() > 0 && progressItem->subSoundIndex >= 0) {
+                // Adding 1 ensures progress hits 100% when the last index finishes
+                int totalPercent = 100 * (index + 1) / wavList.size();
+                emit progressUpdated(totalPercent);
                 index++;
             }
             break;
         }
-        case FSBANK_STATE_WARNING:
-            // Item warning
-            emit updateConsole("\nWarning, there is a issue with one of the wav files.");
-            break;
-        case FSBANK_STATE_FAILED:
-            // Item build failed
-            emit updateConsole("\nfsb file failed to build.");
-            break;
-        default:
-            emit updateConsole("\nUnknown error");
+
+        case FSBANK_STATE_WARNING: {
+            // FMOD provides a specific struct cast for warnings via stateData
+            if (progressItem->stateData) {
+                auto* warnData = static_cast<const FSBANK_STATEDATA_WARNING*>(progressItem->stateData);
+                // FIXED: Multi-arg syntax used here to resolve clazy warning
+                emit updateConsole(QString("\nWarning on [%1]: %2 (Code: %3)")
+                                       .arg(soundName, warnData->warningString, QString::number(warnData->warnCode)));
+            } else {
+                emit updateConsole(QString("\nWarning, there is an issue with %1").arg(soundName));
+            }
             break;
         }
 
-        FSBank_ReleaseProgressItem(progressItem); // Release memory for the item
-        progressItem = nullptr; // Reset for next fetch
+        case FSBANK_STATE_FAILED: {
+            // FMOD provides a specific struct cast for failures via stateData
+            if (progressItem->stateData) {
+                auto* failData = static_cast<const FSBANK_STATEDATA_FAILED*>(progressItem->stateData);
+                // FIXED: Multi-arg syntax used here to resolve clazy warning
+                emit updateConsole(QString("\nError on [%1]: %2 (Code: %3)")
+                                       .arg(soundName, failData->errorString, QString::number(failData->errorCode)));
+            } else {
+                emit updateConsole(QString("\nError: %1 failed to build.").arg(soundName));
+            }
+            break;
+        }
+
+        default:
+            emit updateConsole("\nUnknown progress state encountered.");
+            break;
+        }
+
+        FSBank_ReleaseProgressItem(progressItem);
+        progressItem = nullptr;
+
+        // Prevent thread starvation / high CPU lock
         QThread::msleep(10);
     }
 }
 
 void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
 {
+    // ==========================================
+    // INPUT FILE VALIDATION & HEADER PARSING
+    // ==========================================
     QFile file(bankFile);
     if (!file.open(QIODevice::ReadOnly)) {
         emit taskFinished("\nError opening file: " + bankFile);
         return;
     }
 
+    // Set up binary stream parameters for FMOD .bank file specification
     QDataStream in(&file);
     in.setVersion(QDataStream::Qt_DefaultCompiledVersion);
     in.setByteOrder(QDataStream::LittleEndian);
 
+    // Validate 4-byte RIFF container signature
     const QByteArray magicArray = readBytes(in, 4);
     if (magicArray != "RIFF") {
-        emit taskFinished("\nError, has no RIFF in header");
+        emit taskFinished(GlobalErrors::errorToString(ErrorChecks::InvalidRIFF));
         return;
     }
 
+    // Jump to offset 0x08 and validate 4-byte FEV (FMOD Event File) identifier string
     file.seek(0x08);
     const QByteArray fevStringArray = readBytes(in, 4);
     if (fevStringArray != "FEV ") {
-        emit taskFinished("\nError, has no FEV in header");
+        emit taskFinished(GlobalErrors::errorToString(ErrorChecks::InvalidFEV));
         return;
     }
 
+    // Jump to offset 0x14 and extract structural architecture layout version version integer
     file.seek(0x14);
     quint32 version;
     in >> version;
     if (version == 0) {
-        emit taskFinished("\nError, version not supported");
+        emit taskFinished(GlobalErrors::errorToString(ErrorChecks::InvalidVersion));
         return;
     }
 
+    // Jump to offset 0x1C and validate structural sub-container LIST chunk layout marker
     file.seek(0x1c);
     const QByteArray listStringArray = readBytes(in, 4);
     if (listStringArray != "LIST") {
-        emit taskFinished("\nError, has no LIST in header");
+        emit taskFinished(GlobalErrors::errorToString(ErrorChecks::InvalidLIST));
         return;
     }
 
+    // Skip ahead past size field to target specific nested structural metadata definitions
     file.seek(file.pos() + 0x04);
     const QByteArray projStringArray = readBytes(in, 4);
-    const QByteArray BnkiStringArray = readBytes(in, 4);
-    if (projStringArray != "PROJ" || BnkiStringArray != "BNKI") {
-        emit taskFinished("\nError, has no PROJ or BNKI in header");
+    if (projStringArray != "PROJ") {
+        emit taskFinished(GlobalErrors::errorToString(ErrorChecks::InvalidPROJ));
         return;
     }
 
+    // Validate target audio file index block marker token element string identifier
+    const QByteArray BnkiStringArray = readBytes(in, 4);
+    if (BnkiStringArray != "BNKI") {
+        emit taskFinished(GlobalErrors::errorToString(ErrorChecks::InvalidBNKI));
+        return;
+    }
+
+    // ==========================================
+    // CHUNK LAYOUT PARSING & OFFSET SCANNING
+    // ==========================================
     QVector<quint32> sndh_fsbOffset, sndh_fsbSize, snd_location, snd_buffer;
     quint32 chunk_size, sndh_unknown = 0, fsbCount = 1, sndh_location = 0;
 
+    // Read the primary project header sizing envelope property information
     in >> chunk_size;
     file.seek(file.pos() + chunk_size);
 
+    // Initialise array memory vectors before stepping into loop structure operations
     sndh_fsbOffset.resize(1);
     sndh_fsbOffset[0] = 0;
 
@@ -317,134 +383,148 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
     snd_location.resize(1);
     snd_location[0] = 0;
 
+    // Walk sequentially through chunk descriptors until the primary audio target location matches
     while (snd_location[0] == 0 && file.pos() < file.size()) {
         quint32 chunk_type;
         in >> chunk_type;
         in >> chunk_size;
 
+        // Guard against corrupted binary structures or infinite file stream pointer failures
         if (chunk_type == 0xFFFFFFFF || chunk_size == 0xFFFFFFFF) {
-            return; // Invalid chunk
+            emit taskFinished(GlobalErrors::errorToString(ErrorChecks::InvalidChunk));
+            return;
         }
 
         switch(chunk_type)
         {
-            case 0x48444E53: /* "SNDH" */
+        case 0x48444E53: /* "SNDH" - Sound Header containing sound block arrays */
+        {
+            // Each sub-element index record occupies 8 bytes of structural boundary layout space
+            fsbCount = (chunk_size - 4) / 8;
+
+            sndh_fsbOffset.resize(fsbCount);
+            sndh_fsbSize.resize(fsbCount);
+
+            in >> sndh_unknown;
+            sndh_location = file.pos(); // Store address position to patch updated headers later
+
+            // Extract positional indices and sizing limits for all nested audio objects
+            for (quint32 j = 0; j < fsbCount; j++)
             {
-                fsbCount = (chunk_size - 4) / 8;
-
-                sndh_fsbOffset.resize(fsbCount);
-                sndh_fsbSize.resize(fsbCount);
-
-                in >> sndh_unknown;
-
-                sndh_location = file.pos();
-
-                for (quint32 j = 0; j < fsbCount; j++)
-                {
-                    in >> sndh_fsbOffset[j];
-                    in >> sndh_fsbSize[j];
-                }
-                continue;
+                in >> sndh_fsbOffset[j];
+                in >> sndh_fsbSize[j];
             }
-            case 0x4C425453: /* "STBL" */
+            continue;
+        }
+        case 0x4C425453: /* "STBL" - String Table block sequence wrapper */
+        {
+            quint64 currentPos = file.pos();
+
+            if (chunk_size != 0)
             {
-                quint64 currentPos = file.pos();
-
-                if (chunk_size != 0)
-                {
-                    file.seek(currentPos + chunk_size);
-                    quint32 chunkTypeHash = 0;
-                    in >> chunkTypeHash;
-
-                    switch(chunkTypeHash)
-                    {
-                       case 0x20444E53: /* "SND " */
-                       case 0x48534148: /* "HASH" */
-                            break;
-                       default:
-                            chunk_size += 1;
-                            break;
-                    }
-                }
                 file.seek(currentPos + chunk_size);
-                continue;
-            }
-            case 0x20444E53: /* "SND " */
-            {
-                snd_location.resize(fsbCount);
-                snd_location[0] = file.pos() - 8;
-                snd_buffer.resize(fsbCount);
-                snd_buffer[0] = chunk_size - sndh_fsbSize[0];
+                quint32 chunkTypeHash = 0;
+                in >> chunkTypeHash;
 
-                if (fsbCount > 1)
+                // Verify whether adjacent data items override expected padding structural layouts
+                switch(chunkTypeHash)
                 {
-                    for (quint32 j = 0; j < fsbCount - 1; j++)
-                    {
-                        snd_location[j + 1] = sndh_fsbOffset[j] + sndh_fsbSize[j];
-                        file.seek(snd_location[j + 1] + 4);
-                        quint32 _chunk_size = 0;
-                        in >> _chunk_size;
-                        snd_buffer[j + 1] = _chunk_size - sndh_fsbSize[j + 1];
-                    }
+                case 0x20444E53: /* "SND " */
+                case 0x48534148: /* "HASH" */
+                    break;
+                default:
+                    chunk_size += 1; // Readjust stream alignment boundary offset metrics
+                    break;
                 }
-                break;
             }
+            file.seek(currentPos + chunk_size);
+            continue;
+        }
+        case 0x20444E53: /* "SND " - Sound data chunk data definition area */
+        {
+            snd_location.resize(fsbCount);
+            snd_location[0] = file.pos() - 8;
+            snd_buffer.resize(fsbCount);
+            snd_buffer[0] = chunk_size - sndh_fsbSize[0];
+
+            // If processing multi-file compound banks, map out secondary offset tracks
+            if (fsbCount > 1)
+            {
+                for (quint32 j = 0; j < fsbCount - 1; j++)
+                {
+                    snd_location[j + 1] = sndh_fsbOffset[j] + sndh_fsbSize[j];
+                    file.seek(snd_location[j + 1] + 4);
+                    quint32 _chunk_size = 0;
+                    in >> _chunk_size;
+                    snd_buffer[j + 1] = _chunk_size - sndh_fsbSize[j + 1];
+                }
+            }
+            break;
+        }
         }
 
         file.seek(file.pos() + chunk_size);
     }
 
+    // Verify structural data locations parsed correctly before generating binary outputs
     QString bankName = file.fileName();
+    if (sndh_fsbOffset[0] == 0 || sndh_fsbSize[0] == 0) { emit taskFinished(GlobalErrors::errorToString(ErrorChecks::RebSndhOffsetSizeError) + bankName); return; }
+    if (sndh_location == 0) { emit taskFinished(GlobalErrors::errorToString(ErrorChecks::RebSndhLocationError) + bankName); return; }
+    if (snd_location[0] == 0) { emit taskFinished(GlobalErrors::errorToString(ErrorChecks::RebSndLocationError) + bankName); return; }
 
-    if (sndh_fsbOffset[0] == 0 || sndh_fsbSize[0] == 0) { emit taskFinished("\nRebuilding Bank Error, sndh_offset or sndh_size should not be 0 for - " + bankName); return; }
-    if (sndh_location == 0) { emit taskFinished("\nRebuilding Bank Error, sndh_location should not be 0 for - " + bankName); return; }
-    if (snd_location[0] == 0) { emit taskFinished("\nRebuilding Bank Error, snd_location should not be 0 for - " + bankName); return; }
-
+    // Read the original un-modified initial bank header content up to the first FSB container block
     file.seek(0);
     QByteArray bankHeader = readBytes(in, sndh_fsbOffset[0]);
-
     file.close();
 
+    // ==========================================
+    // TARGET FILE PREPARATION & SIZE MAPPING
+    // ==========================================
     QFileInfo fileInfo(bankName);
     QString bankNameTmp = fileInfo.fileName();
     QFile bankoutFile(buildPath + bankNameTmp);
     if (!bankoutFile.open(QIODevice::WriteOnly)) {
-        emit taskFinished("\nRebuilding Bank Error, writing to: " + buildPath + bankNameTmp);
+        emit taskFinished(QString("\nRebuilding Bank Error, writing to: %1%2").arg(buildPath, bankNameTmp));
         return;
     }
 
+    // Write original unaltered layout preamble headers straight into the output bank package structure
     bankoutFile.write(bankHeader, sndh_fsbOffset[0]);
 
     QVector<quint32> fsbSizes;
-
     fsbSizes.resize(fsbCount);
     fsbSizes[0] = 0;
 
-    QString fsbFileName = QCoreApplication::applicationDirPath() + "/fsb/" + bankNameTmp.replace(".bank", "");
+    QString fsbFileName = QString("%1/fsb/%2").arg(QCoreApplication::applicationDirPath(), bankNameTmp.replace(".bank", ""));
 
+    // Verify the newly compiled FSB files exist on disk and record their new sizes
     for (quint32 i = 0; i < fsbCount; i++)
     {
-        QString fsbFilePath = fsbFileName + "[" + QString::number(i) + "].fsb";
+        QString fsbFilePath = QString("%1[%2].fsb").arg(fsbFileName).arg(i);
         QFileInfo fileInfo(fsbFilePath);
 
         if (fileInfo.exists()) {
-            fsbSizes[i] = (quint32)fileInfo.size(); // Returns the fsb size in bytes.
+            fsbSizes[i] = (quint32)fileInfo.size();
         } else {
-            emit taskFinished("\nRebuilding Bank Error, fsb file does not exist " + fsbFilePath);
+            emit taskFinished(GlobalErrors::errorToString(ErrorChecks::RebNoFSBFound) + fsbFilePath);
             return;
         }
     }
 
+    // Calculate shifting structural offset metrics for compounds with multiple child FSB data blocks
     if (fsbCount > 1)
     {
         for (quint32 i = 0; i < fsbCount - 1; i++)
         {
-            sndh_fsbOffset[i + 1] = sndh_fsbOffset[i] + fsbSizes[i] + snd_buffer[i + 1] + 8; // Adding new fsb offsets, if more then 1 fsb in bank.
+            sndh_fsbOffset[i + 1] = sndh_fsbOffset[i] + fsbSizes[i] + snd_buffer[i + 1] + 8;
         }
     }
 
+    // ==========================================
+    // HEADER INJECTION & AUDIO RE-ASSEMBLY
+    // ==========================================
+    // Jump to the metadata table position and inject the new pointer maps and sizes
     bankoutFile.seek(sndh_location);
-
     for (quint32 i = 0; i < fsbCount; i++)
     {
         bankoutFile.write(reinterpret_cast<const char*>(&sndh_fsbOffset[i]), 4);
@@ -452,14 +532,15 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
     }
 
     bankoutFile.flush();
-    bankoutFile.seek(snd_location[0]);
+    bankoutFile.seek(snd_location[0]); // Relocate file pointer to the start of the audio segment data space
 
+    // Stitch the freshly generated FSB container files directly into the target banking payload
     for (quint32 i = 0; i < fsbCount; i++)
     {
-        QString fsbFilePath = fsbFileName + "[" + QString::number(i) + "].fsb";
+        QString fsbFilePath = QString("%1[%2].fsb").arg(fsbFileName).arg(i);
         QFile fsbInFile(fsbFilePath);
         if (!fsbInFile.open(QIODevice::ReadOnly)) {
-            emit taskFinished("\nRebuilding Bank Error, reading: " + fsbFilePath);
+            emit taskFinished(QString("\nRebuilding Bank Error, reading: %1").arg(fsbFilePath));
             return;
         }
 
@@ -467,17 +548,21 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
         fsbIn.setVersion(QDataStream::Qt_DefaultCompiledVersion);
         fsbIn.setByteOrder(QDataStream::LittleEndian);
 
+        // Standardise target signature fields and map tracking parameters down to byte alignment rules
         bankoutFile.write("SND ");
         quint32 fsbTmpSize = fsbSizes[i] + snd_buffer[i];
         bankoutFile.write(reinterpret_cast<const char*>(&fsbTmpSize), 4);
+
+        // Zero-fill padding space blocks depending on technical header requirements
         quint32 bufferSize = snd_buffer[i];
         QByteArray buffer(bufferSize, '\0');
 
         if (bufferSize != 0)
             bankoutFile.write(buffer);
 
+        // Stream raw binary blocks out of the independent file instances into the main container asset
         quint32 chunkCount = fileio::chunkAmount(fsbSizes[i]);
-        std::vector<quint64> _chunkSizes = fileio::chunkSizes(fsbSizes[i], chunkCount);
+        std::vector _chunkSizes = fileio::chunkSizes(fsbSizes[i], chunkCount);
 
         for (unsigned int k = 0; k < chunkCount; k++) {
             QByteArray fsbBuffer = readBytes(fsbIn, _chunkSizes[k]);
@@ -487,10 +572,12 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
         fsbInFile.close();
     }
 
+    // Patch the global master file layout container size metadata element at offset index position 4
     quint32 headerSize = (bankoutFile.size()) - 8;
     bankoutFile.seek(4);
     bankoutFile.write(reinterpret_cast<const char*>(&headerSize), 4);
 
+    // Commit all cached system operations safely down to disk storage
     bankoutFile.flush();
     bankoutFile.close();
 }
@@ -507,7 +594,7 @@ QStringList RebuildWorker::readTextFileToQStringList(const QString& filePath) {
     QFile file(filePath);
 
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        emit taskFinished("\nCould not open file: " + filePath);
+        emit taskFinished(QString("\nCould not open file: %1").arg(filePath));
         return stringList; // Return empty list if file cannot be opened
     }
 
