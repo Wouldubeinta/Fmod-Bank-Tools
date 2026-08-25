@@ -66,3 +66,25 @@ QString fileio::resolveFolderPath(const QString& inputPath) {
 
     return QDir::cleanPath(resolvedPath);
 }
+
+QStringList fileio::readTextFileToQStringList(const QString& filePath) {
+    QStringList stringList;
+    QFile file(filePath);
+
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        throw std::invalid_argument("Could not open txt file").what();
+        return stringList; // Return empty list if file cannot be opened
+    }
+
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        stringList.append(line);
+    }
+
+    if (stringList.isEmpty()) // prevent's application crash if password is empty.
+        stringList.append("");
+
+    file.close();
+    return stringList;
+}

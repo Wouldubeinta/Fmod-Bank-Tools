@@ -23,9 +23,8 @@ private:
     ErrorChecks handlePasswordProtectedBank(QString bankPath, FMOD_CREATESOUNDEXINFO &exinfo);
 
     // Core file parsing routines and asset management modules
-    void processSubSounds(FMOD_SOUND *sound, QFileInfo bankFileInfo, const QString &wavDir, quint32 fsbIndex);
+    ErrorChecks processSubSounds(FMOD_SOUND *sound, QFileInfo bankFileInfo, const QString &wavDir, quint32 fsbIndex);
     void writeFilenamesToFile(const QStringList &filenames, const QString &outputFilePath);
-    QStringList readTextFileToQStringList(const QString& filePath);
 
 public slots:
     // Background worker task slot managed by QThread event loop calls

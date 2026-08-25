@@ -164,8 +164,9 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_actionExtract_triggered()
 {
-    // Disable the extract UI action immediately to prevent double-clicks or overlapping threads
+    // Disable the extract UI action immediately to prevent double-clicks or overlapping threads   
     ui->actionExtract->setEnabled(false);
+    ui->actionRebuild->setEnabled(false);
 
     // Clear old text logs from the UI console before starting a new extraction job
     ui->consoleTextBox->clear();
@@ -196,6 +197,11 @@ void MainWindow::on_actionExtract_triggered()
         ui->actionExtract->setEnabled(true);
     });
 
+    // Re-enable the UI Rebuild trigger action ONLY after the background work is completely done
+    connect(extractWorker, &ExtractWorker::taskFinished, this, [this]() {
+        ui->actionRebuild->setEnabled(true);
+    });
+
     // ==========================================
     // LIFECYCLE MANAGEMENT CONNECTIONS
     // ==========================================
@@ -221,6 +227,7 @@ void MainWindow::on_actionExtract_triggered()
 void MainWindow::on_actionRebuild_triggered()
 {
     // Disable the trigger action immediately to prevent accidental double-clicks or overlapping threads
+    ui->actionExtract->setEnabled(false);
     ui->actionRebuild->setEnabled(false);
 
     // Clear old text logs from the UI console before starting a new compile job
@@ -246,6 +253,11 @@ void MainWindow::on_actionRebuild_triggered()
 
     // Listen for the overall macro compilation completion signal to trigger final UI state resets
     connect(rebuildWorker, &RebuildWorker::taskFinished, this, &MainWindow::handleWorkFinished);
+
+    // Re-enable the UI Extract trigger action ONLY after the background work is completely done
+    connect(rebuildWorker, &RebuildWorker::taskFinished, this, [this]() {
+        ui->actionExtract->setEnabled(true);
+    });
 
     // Re-enable the UI Rebuild trigger action ONLY after the background work is completely done
     connect(rebuildWorker, &RebuildWorker::taskFinished, this, [this]() {

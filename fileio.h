@@ -15,6 +15,7 @@ public:
     static quint32 chunkAmount(quint32 unCompressedSize, quint32 chunkSize = 262144);
     static std::vector<quint64> chunkSizes(quint32 unCompressedSize, qint32 chunkAmount, quint32 chunkSize = 262144);
     static QString resolveFolderPath(const QString& inputPath);
+    static QStringList readTextFileToQStringList(const QString& filePath);
 
 private:
     fileio() = delete;

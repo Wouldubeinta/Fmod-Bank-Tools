@@ -9,6 +9,7 @@
 #include <QDirIterator>
 #include <QApplication>
 #include <qsettings.h>
+#include "global_errors.h"
 
 class RebuildWorker : public QObject
 {
@@ -17,9 +18,8 @@ public:
     explicit RebuildWorker(QObject *parent = nullptr);
 
 private:
-    void bankProgress(const QStringList wavList);
-    QStringList readTextFileToQStringList(const QString& filePath);
-    void bankRebuild(const QString bankFile, const QString buildPath);
+    ErrorChecks bankProgress(const QStringList wavList);
+    ErrorChecks bankRebuild(const QString bankFile, const QString buildPath);
     QByteArray readBytes(QDataStream &in, int size);
 
 public slots:
