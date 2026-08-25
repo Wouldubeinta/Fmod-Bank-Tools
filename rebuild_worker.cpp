@@ -10,15 +10,15 @@ void RebuildWorker::rebuild_bank()
     // ==========================================
     // INITIALISATION & CONFIGURATION LOADING
     // ==========================================
-    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
+    QString config = QString("%1/config.ini").arg(QCoreApplication::applicationDirPath());
     QSettings settings(config, QSettings::IniFormat);
 
     settings.beginGroup("Directorys");
-    QString fsbDir = QCoreApplication::applicationDirPath() + "/fsb/";
-    QString bankDir = fileio::resolveFolderPath(settings.value("BankDir").toString()) + "/";
-    QString wavDir = fileio::resolveFolderPath(settings.value("WavDir").toString()) + "/";
-    QString rebuildDir = fileio::resolveFolderPath(settings.value("RebuildDir").toString()) + "/";
-    QString cacheDir = fileio::resolveFolderPath(settings.value("CacheDir").toString()) + "/";
+    QString fsbDir = QString("%1/fsb/").arg(QCoreApplication::applicationDirPath());
+    QString bankDir = QString("%1/").arg(fileio::resolveFolderPath(settings.value("BankDir").toString()));
+    QString wavDir = QString("%1/").arg(fileio::resolveFolderPath(settings.value("WavDir").toString()));
+    QString rebuildDir = QString("%1/").arg(fileio::resolveFolderPath(settings.value("RebuildDir").toString()));
+    QString cacheDir = QString("%1/").arg(fileio::resolveFolderPath(settings.value("CacheDir").toString()));
     settings.endGroup();
 
     settings.beginGroup("Options");
@@ -76,11 +76,11 @@ void RebuildWorker::rebuild_bank()
 
         quint32 removePos = wavFileInfo.completeBaseName().length() - 3;
         QString bankName = wavFileInfo.completeBaseName().remove(removePos, 3);
-        QString bankFileBasePath = bankDir + bankName;
-        QString bankFilePath = bankFileBasePath + ".bank";
+        QString bankFileBasePath = QString("%1%2").arg(bankDir, bankName);
+        QString bankFilePath = QString("%1.bank").arg(bankFileBasePath);
         QString passwordTextFile = QDir(bankDir).filePath("password.txt");
-        QString passwordBankTextFile = bankFileBasePath + ".txt";
-        QString fsbFilePath = fsbDir + wavFileInfo.completeBaseName() + ".fsb";
+        QString passwordBankTextFile = QString("%1.txt").arg(bankFileBasePath);
+        QString fsbFilePath = QString("%1%2.fsb").arg(fsbDir, wavFileInfo.completeBaseName());
 
         QString newLineCheck = (i == 0) ? "" : "\n";
         emit updateConsole(QString("%1Fmod Bank file: %2.bank").arg(newLineCheck, bankName));
@@ -95,7 +95,7 @@ void RebuildWorker::rebuild_bank()
         emit updateConsole(QString("Thread Count: %1\n").arg(cpuThreads));
         emit updateConsole(QString("ReBuilding %1.bank has started, Please wait.....\n").arg(bankName));
 
-        if (!QFileInfo::exists(bankFileBasePath + ".bank"))
+        if (!QFileInfo::exists(QString("%1.bank").arg(bankFileBasePath)))
         {
             emit updateConsole(QString("Aborting bank rebuilding, can't find - %1.bank").arg(bankFileBasePath));
             result = FSBank_Release();
@@ -204,7 +204,7 @@ void RebuildWorker::rebuild_bank()
 
         result = FSBank_Release();
         if (result != FSBANK_OK) {
-            emit taskFinished(FSBank_ErrorString(result));
+            emit updateConsole(FSBank_ErrorString(result));
             continue;
         }
 
@@ -307,7 +307,7 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
     // ==========================================
     QFile file(bankFile);
     if (!file.open(QIODevice::ReadOnly)) {
-        emit taskFinished("\nError opening file: " + bankFile);
+        emit updateConsole(QString("\nError opening file: %1").arg(bankFile));
         return;
     }
 
@@ -319,7 +319,7 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
     // Validate 4-byte RIFF container signature
     const QByteArray magicArray = readBytes(in, 4);
     if (magicArray != "RIFF") {
-        emit taskFinished(GlobalErrors::errorToString(ErrorChecks::InvalidRIFF));
+        emit updateConsole(GlobalErrors::errorToString(ErrorChecks::InvalidRIFF));
         return;
     }
 
@@ -327,7 +327,7 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
     file.seek(0x08);
     const QByteArray fevStringArray = readBytes(in, 4);
     if (fevStringArray != "FEV ") {
-        emit taskFinished(GlobalErrors::errorToString(ErrorChecks::InvalidFEV));
+        emit updateConsole(GlobalErrors::errorToString(ErrorChecks::InvalidFEV));
         return;
     }
 
@@ -336,7 +336,7 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
     quint32 version;
     in >> version;
     if (version == 0) {
-        emit taskFinished(GlobalErrors::errorToString(ErrorChecks::InvalidVersion));
+        emit updateConsole(GlobalErrors::errorToString(ErrorChecks::InvalidVersion));
         return;
     }
 
@@ -344,7 +344,7 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
     file.seek(0x1c);
     const QByteArray listStringArray = readBytes(in, 4);
     if (listStringArray != "LIST") {
-        emit taskFinished(GlobalErrors::errorToString(ErrorChecks::InvalidLIST));
+        emit updateConsole(GlobalErrors::errorToString(ErrorChecks::InvalidLIST));
         return;
     }
 
@@ -352,14 +352,14 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
     file.seek(file.pos() + 0x04);
     const QByteArray projStringArray = readBytes(in, 4);
     if (projStringArray != "PROJ") {
-        emit taskFinished(GlobalErrors::errorToString(ErrorChecks::InvalidPROJ));
+        emit updateConsole(GlobalErrors::errorToString(ErrorChecks::InvalidPROJ));
         return;
     }
 
     // Validate target audio file index block marker token element string identifier
     const QByteArray BnkiStringArray = readBytes(in, 4);
     if (BnkiStringArray != "BNKI") {
-        emit taskFinished(GlobalErrors::errorToString(ErrorChecks::InvalidBNKI));
+        emit updateConsole(GlobalErrors::errorToString(ErrorChecks::InvalidBNKI));
         return;
     }
 
@@ -391,7 +391,7 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
 
         // Guard against corrupted binary structures or infinite file stream pointer failures
         if (chunk_type == 0xFFFFFFFF || chunk_size == 0xFFFFFFFF) {
-            emit taskFinished(GlobalErrors::errorToString(ErrorChecks::InvalidChunk));
+            emit updateConsole(GlobalErrors::errorToString(ErrorChecks::InvalidChunk));
             return;
         }
 
@@ -468,9 +468,9 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
 
     // Verify structural data locations parsed correctly before generating binary outputs
     QString bankName = file.fileName();
-    if (sndh_fsbOffset[0] == 0 || sndh_fsbSize[0] == 0) { emit taskFinished(GlobalErrors::errorToString(ErrorChecks::RebSndhOffsetSizeError) + bankName); return; }
-    if (sndh_location == 0) { emit taskFinished(GlobalErrors::errorToString(ErrorChecks::RebSndhLocationError) + bankName); return; }
-    if (snd_location[0] == 0) { emit taskFinished(GlobalErrors::errorToString(ErrorChecks::RebSndLocationError) + bankName); return; }
+    if (sndh_fsbOffset[0] == 0 || sndh_fsbSize[0] == 0) { emit updateConsole(QString("%1%2").arg(GlobalErrors::errorToString(ErrorChecks::RebSndhOffsetSizeError), bankName)); return; }
+    if (sndh_location == 0) { emit updateConsole(QString("%1%2").arg(GlobalErrors::errorToString(ErrorChecks::RebSndhLocationError), bankName)); return; }
+    if (snd_location[0] == 0) { emit updateConsole(QString("%1%2").arg(GlobalErrors::errorToString(ErrorChecks::RebSndLocationError), bankName)); return; }
 
     // Read the original un-modified initial bank header content up to the first FSB container block
     file.seek(0);
@@ -484,7 +484,7 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
     QString bankNameTmp = fileInfo.fileName();
     QFile bankoutFile(buildPath + bankNameTmp);
     if (!bankoutFile.open(QIODevice::WriteOnly)) {
-        emit taskFinished(QString("\nRebuilding Bank Error, writing to: %1%2").arg(buildPath, bankNameTmp));
+        emit updateConsole(QString("\nRebuilding Bank Error, writing to: %1%2").arg(buildPath, bankNameTmp));
         return;
     }
 
@@ -506,7 +506,7 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
         if (fileInfo.exists()) {
             fsbSizes[i] = (quint32)fileInfo.size();
         } else {
-            emit taskFinished(GlobalErrors::errorToString(ErrorChecks::RebNoFSBFound) + fsbFilePath);
+            emit updateConsole(QString("%1%2").arg(GlobalErrors::errorToString(ErrorChecks::RebNoFSBFound), fsbFilePath));
             return;
         }
     }
@@ -537,10 +537,10 @@ void RebuildWorker::bankRebuild(const QString bankFile, const QString buildPath)
     // Stitch the freshly generated FSB container files directly into the target banking payload
     for (quint32 i = 0; i < fsbCount; i++)
     {
-        QString fsbFilePath = QString("%1[%2].fsb").arg(fsbFileName).arg(i);
+        QString fsbFilePath = QString("%1[%2].fsb").arg(fsbFileName, QString::number(i));
         QFile fsbInFile(fsbFilePath);
         if (!fsbInFile.open(QIODevice::ReadOnly)) {
-            emit taskFinished(QString("\nRebuilding Bank Error, reading: %1").arg(fsbFilePath));
+            emit updateConsole(QString("\nRebuilding Bank Error, reading: %1").arg(fsbFilePath));
             return;
         }
 
@@ -594,7 +594,7 @@ QStringList RebuildWorker::readTextFileToQStringList(const QString& filePath) {
     QFile file(filePath);
 
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        emit taskFinished(QString("\nCould not open file: %1").arg(filePath));
+        emit updateConsole(QString("\nCould not open file: %1").arg(filePath));
         return stringList; // Return empty list if file cannot be opened
     }
 

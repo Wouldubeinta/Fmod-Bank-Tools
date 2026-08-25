@@ -18,12 +18,12 @@ void ExtractWorker::extract_fsb()
     exinfo.length = 0;
 
     // Load directory paths from config.ini
-    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
+    QString config = QString("%1/config.ini").arg(QCoreApplication::applicationDirPath());
     QSettings settings(config, QSettings::IniFormat);
     settings.beginGroup("Directorys");
-    QString fsbDir = QCoreApplication::applicationDirPath() + "/fsb/";
-    QString bankDir = fileio::resolveFolderPath(settings.value("BankDir").toString()) + "/";
-    QString wavDir = fileio::resolveFolderPath(settings.value("WavDir").toString()) + "/";
+    QString fsbDir = QString("%1/fsb/").arg(QCoreApplication::applicationDirPath());
+    QString bankDir = QString("%1/").arg(fileio::resolveFolderPath(settings.value("BankDir").toString()));
+    QString wavDir = QString("/").arg(fileio::resolveFolderPath(settings.value("WavDir").toString()));
     settings.endGroup();
 
     // Scan the bank directory for all .bank files

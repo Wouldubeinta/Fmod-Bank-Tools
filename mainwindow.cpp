@@ -28,7 +28,7 @@ MainWindow::MainWindow(QWidget *parent)
     QString bankDir = fileio::resolveFolderPath(settings.value("BankDir").toString());
     if (bankDir.isEmpty() || !QFileInfo::exists(bankDir))
     {
-        bankDir = QCoreApplication::applicationDirPath() + "/bank";
+        bankDir = QString("%1/bank").arg(QCoreApplication::applicationDirPath());
         settings.setValue("BankDir", bankDir);
     }
 
@@ -36,7 +36,7 @@ MainWindow::MainWindow(QWidget *parent)
     QString wavDir = fileio::resolveFolderPath(settings.value("WavDir").toString());
     if (wavDir.isEmpty() || !QFileInfo::exists(wavDir))
     {
-        wavDir = QCoreApplication::applicationDirPath() + "/wav";
+        wavDir = QString("%1/wav").arg(QCoreApplication::applicationDirPath());
         settings.setValue("WavDir", wavDir);
     }
 
@@ -44,7 +44,7 @@ MainWindow::MainWindow(QWidget *parent)
     QString rebuildDir = fileio::resolveFolderPath(settings.value("RebuildDir").toString());
     if (rebuildDir.isEmpty() || !QFileInfo::exists(rebuildDir))
     {
-        rebuildDir = QCoreApplication::applicationDirPath() + "/build";
+        rebuildDir = QString("%1/build").arg(QCoreApplication::applicationDirPath());
         settings.setValue("RebuildDir", rebuildDir);
     }
 
@@ -52,7 +52,7 @@ MainWindow::MainWindow(QWidget *parent)
     QString cacheDir = fileio::resolveFolderPath(settings.value("CacheDir").toString());
     if (cacheDir.isEmpty() || !QFileInfo::exists(cacheDir))
     {
-        cacheDir = QCoreApplication::applicationDirPath() + "/fsbcache";
+        cacheDir = QString("%1/fsbcache").arg(QCoreApplication::applicationDirPath());
         settings.setValue("CacheDir", cacheDir);
     }
     settings.endGroup();
@@ -283,7 +283,7 @@ void MainWindow::on_actionSettings_triggered()
 
 void MainWindow::on_defaultSettings_checkBox_checkStateChanged(const Qt::CheckState &arg1)
 {
-    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
+    QString config = QString("%1/config.ini").arg(QCoreApplication::applicationDirPath());
     QSettings settings(config, QSettings::IniFormat);
     settings.beginGroup("Options");
     settings.setValue("DefaultSettings", arg1 == Qt::Checked ? "true" : "false");
@@ -292,7 +292,7 @@ void MainWindow::on_defaultSettings_checkBox_checkStateChanged(const Qt::CheckSt
 
 void MainWindow::on_encodeSyncPoint_checkBox_checkStateChanged(const Qt::CheckState &arg1)
 {
-    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
+    QString config = QString("%1/config.ini").arg(QCoreApplication::applicationDirPath());
     QSettings settings(config, QSettings::IniFormat);
     settings.beginGroup("Options");
     settings.setValue("EncodeSyncPoint", arg1 == Qt::Checked ? "true" : "false");
@@ -301,7 +301,7 @@ void MainWindow::on_encodeSyncPoint_checkBox_checkStateChanged(const Qt::CheckSt
 
 void MainWindow::on_looping_checkBox_checkStateChanged(const Qt::CheckState &arg1)
 {
-    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
+    QString config = QString("%1/config.ini").arg(QCoreApplication::applicationDirPath());
     QSettings settings(config, QSettings::IniFormat);
     settings.beginGroup("Options");
     settings.setValue("Looping", arg1 == Qt::Checked ? "true" : "false");
@@ -310,7 +310,7 @@ void MainWindow::on_looping_checkBox_checkStateChanged(const Qt::CheckState &arg
 
 void MainWindow::on_embededFileNames_checkBox_checkStateChanged(const Qt::CheckState &arg1)
 {
-    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
+    QString config = QString("%1/config.ini").arg(QCoreApplication::applicationDirPath());
     QSettings settings(config, QSettings::IniFormat);
     settings.beginGroup("Options");
     settings.setValue("EmbededFileNames", arg1 == Qt::Checked ? "true" : "false");
@@ -319,11 +319,39 @@ void MainWindow::on_embededFileNames_checkBox_checkStateChanged(const Qt::CheckS
 
 void MainWindow::on_writePeakVolume_checkBox_checkStateChanged(const Qt::CheckState &arg1)
 {
-    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
+    QString config = QString("%1/config.ini").arg(QCoreApplication::applicationDirPath());
     QSettings settings(config, QSettings::IniFormat);
     settings.beginGroup("Options");
     settings.setValue("WritePeakVolume", arg1 == Qt::Checked ? "true" : "false");
     settings.endGroup();
+}
+
+void MainWindow::on_format_comboBox_currentIndexChanged(int index)
+{
+    QString config = QString("%1/config.ini").arg(QCoreApplication::applicationDirPath());
+    QSettings settings(config, QSettings::IniFormat);
+    settings.beginGroup("Options");
+    settings.setValue("Format", ui->format_comboBox->itemText(index).toLower());
+    settings.endGroup();
+}
+
+void MainWindow::on_quality_spinBox_valueChanged(int arg1)
+{
+    QString config = QString("%1/config.ini").arg(QCoreApplication::applicationDirPath());
+    QSettings settings(config, QSettings::IniFormat);
+    settings.beginGroup("Options");
+    settings.setValue("Quality", arg1);
+    settings.endGroup();
+}
+
+void MainWindow::on_cpuThread_horizontalSlider_valueChanged(int value)
+{
+    QString config = QString("%1/config.ini").arg(QCoreApplication::applicationDirPath());
+    QSettings settings(config, QSettings::IniFormat);
+    settings.beginGroup("Options");
+    settings.setValue("CPUThreads", QString::number(value));
+    settings.endGroup();
+    ui->cpuThreadsValue_Label->setText(QString::number(value));
 }
 
 void MainWindow::on_actionInfo_triggered()
@@ -350,34 +378,6 @@ void MainWindow::handleWorkFinished(QString result)
 {
     // Display the final result on the UI
     ui->consoleTextBox->append(result);
-}
-
-void MainWindow::on_format_comboBox_currentIndexChanged(int index)
-{
-    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
-    QSettings settings(config, QSettings::IniFormat);
-    settings.beginGroup("Options");
-    settings.setValue("Format", ui->format_comboBox->itemText(index).toLower());
-    settings.endGroup();
-}
-
-void MainWindow::on_quality_spinBox_valueChanged(int arg1)
-{
-    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
-    QSettings settings(config, QSettings::IniFormat);
-    settings.beginGroup("Options");
-    settings.setValue("Quality", arg1);
-    settings.endGroup();
-}
-
-void MainWindow::on_cpuThread_horizontalSlider_valueChanged(int value)
-{
-    QString config = QCoreApplication::applicationDirPath() + "/config.ini";
-    QSettings settings(config, QSettings::IniFormat);
-    settings.beginGroup("Options");
-    settings.setValue("CPUThreads", QString::number(value));
-    settings.endGroup();
-    ui->cpuThreadsValue_Label->setText(QString::number(value));
 }
 
 void MainWindow::on_actionExit_triggered()
