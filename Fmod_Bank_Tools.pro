@@ -58,6 +58,7 @@ RESOURCES += \
 RC_ICONS = resource\fmod_bank_tools.ico
 
 DISTFILES += \
+    FMOD_LICENSE.TXT \
     readme/encryption_types.webp \
     readme/findmem.webp \
     readme/findmenu.webp \

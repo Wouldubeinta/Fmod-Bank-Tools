@@ -1,5 +1,4 @@
 #include "bank_extract.h"
-#include "qdebug.h"
 #include "fileio.h"
 #include "qfileinfo.h"
 #include <QVector>

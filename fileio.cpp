@@ -1,4 +1,3 @@
-#include <qdebug.h>
 #include "fileio.h"
 #include <vector>
 #include <cmath>
